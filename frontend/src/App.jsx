@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Search, Plus, RefreshCw, Download, ExternalLink, ShieldAlert, CheckCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Search, Plus, RefreshCw, Download, ExternalLink } from 'lucide-react';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://ine-price-tracker-backend.onrender.com';
 const MOCK_STORE_URL = 'https://demo.inelabteamdev.com/';
 
 export default function App() {
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [mockStoreItems, setMockStoreItems] = useState([
-    { id: 'prod_1', name: 'Ultra Wireless Headphones', price: 199.99, stock: 'In Stock', option: 'Black / 32GB' },
-    { id: 'prod_2', name: 'Ergonomic Office Chair', price: 299.50, stock: 'In Stock', option: 'Mesh Grey' },
-    { id: 'prod_3', name: 'Smart Fitness Watch', price: 149.00, stock: 'Low Stock', option: 'Silver Steel' },
+    { id: 'prod_1', name: 'Ultra Wireless Headphones', option: 'Black / 32GB', price: 199.99 },
+    { id: 'prod_2', name: 'Ergonomic Office Chair', option: 'Mesh Grey', price: 299.50 },
+    { id: 'prod_3', name: 'Smart Fitness Watch', option: 'Silver Steel', price: 149.00 }
   ]);
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +29,7 @@ export default function App() {
     }
   };
 
-  const handleTrackProduct = async (item) => {
+  const handleTrack = async (item) => {
     try {
       await axios.post(`${BACKEND_URL}/api/products/track`, {
         store_product_id: item.id,
@@ -39,69 +39,94 @@ export default function App() {
       alert("Product added for tracking successfully!");
       fetchTrackedProducts();
     } catch (err) {
-      alert(err.response?.data?.error || "Failed to track product");
+      alert(err.response?.data?.error || "Error tracking product");
     }
   };
 
-  const triggerManualScrape = async () => {
+  const triggerScrape = async () => {
     setLoading(true);
     try {
       await axios.get(`${BACKEND_URL}/api/trigger-scrape`);
       alert("Scrape cycle completed successfully!");
       fetchTrackedProducts();
     } catch (err) {
-      alert("Scrape failed!");
-    } finally {
-      setLoading(false);
+      alert("Error triggering scrape");
     }
+    setLoading(false);
+  };
+
+  const exportCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Product Name,Store ID,Price,Stock,Timestamp\n";
+    products.forEach(p => {
+      if (p.logs && p.logs.length > 0) {
+        p.logs.forEach(l => {
+          csvContent += `"${p.name}","${p.store_product_id}",${p.latest_price || 0},"${p.latest_stock}","${l.timestamp}"\n`;
+        });
+      }
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "ine_price_history.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '24px', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-gray-950 text-gray-100 p-6 font-sans">
+      <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-xl gap-4">
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>INE Product Price Tracker</h1>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>Automated web scraping & price monitoring dashboard</p>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+              INE Product Price Tracker
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">Automated web scraping & price monitoring dashboard</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="flex flex-wrap gap-3">
             <button 
-              onClick={triggerManualScrape} 
+              onClick={triggerScrape}
               disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#2563eb', color: 'white', padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg disabled:opacity-50"
             >
-              <RefreshCw className={loading ? "animate-spin" : ""} size={16} />
-              {loading ? "Scraping..." : "Run Scrape Now"}
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Scraping...' : 'Run Scrape Now'}
+            </button>
+            <button 
+              onClick={exportCSV}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg"
+            >
+              <Download className="w-4 h-4" /> Export CSV
             </button>
             <a 
               href={MOCK_STORE_URL} 
               target="_blank" 
               rel="noreferrer"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#4b5563', color: 'white', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg font-medium transition border border-gray-700"
             >
-              <ExternalLink size={16} /> Open Mock Store
+              <ExternalLink className="w-4 h-4" /> Open Mock Store
             </a>
           </div>
-        </header>
+        </div>
 
-        {/* Mock Store Section for Selection */}
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Available Products in Store to Track</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-            {mockStoreItems.map((item) => (
-              <div key={item.id} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Available Products Section */}
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-xl">
+          <h2 className="text-lg font-semibold mb-4 text-gray-200">Available Products in Store to Track</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {mockStoreItems.map(item => (
+              <div key={item.id} className="bg-gray-950 p-4 rounded-lg border border-gray-800 flex flex-col justify-between">
                 <div>
-                  <h4 style={{ fontWeight: '600', color: '#111827' }}>{item.name}</h4>
-                  <p style={{ fontSize: '12px', color: '#6b7280' }}>Option: {item.option}</p>
-                  <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>${item.price}</p>
+                  <h3 className="font-medium text-gray-100">{item.name}</h3>
+                  <p className="text-xs text-gray-400 mt-1">Option: {item.option}</p>
+                  <p className="text-emerald-400 font-bold mt-2">${item.price}</p>
                 </div>
-                <button 
-                  onClick={() => handleTrackProduct(item)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#10b981', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+                <button
+                  onClick={() => handleTrack(item)}
+                  className="mt-4 flex items-center justify-center gap-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 py-2 rounded-md transition text-sm font-medium"
                 >
-                  <Plus size={14} /> Track
+                  <Plus className="w-4 h-4" /> Track
                 </button>
               </div>
             ))}
@@ -109,41 +134,76 @@ export default function App() {
         </div>
 
         {/* Tracked Products Dashboard */}
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>Your Tracked Products Dashboard</h3>
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-xl space-y-6">
+          <h2 className="text-lg font-semibold text-gray-200">Your Tracked Products Dashboard</h2>
           
           {products.length === 0 ? (
-            <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No products tracked yet. Click 'Track' on any product above!</p>
+            <p className="text-gray-500 text-center py-6">No products tracked yet. Click 'Track' on any product above!</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {products.map((prod) => (
-                <div key={prod.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div className="space-y-6">
+              {products.map(prod => (
+                <div key={prod.id} className="bg-gray-950 p-6 rounded-xl border border-gray-800 shadow-inner space-y-4">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                     <div>
-                      <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937' }}>{prod.name}</h4>
-                      <p style={{ fontSize: '12px', color: '#6b7280' }}>Store ID: {prod.store_product_id} | Option: {prod.selected_option}</p>
+                      <h3 className="text-lg font-bold text-gray-100">{prod.name}</h3>
+                      <p className="text-xs text-gray-400">Store ID: {prod.store_product_id} | Option: {prod.selected_option}</p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2563eb' }}>
-                        {prod.latest_price !== null ? `$${prod.latest_price}` : 'Pending Scrape'}
-                      </span>
-                      <p style={{ fontSize: '12px', color: prod.latest_stock === 'In Stock' ? '#059669' : '#dc2626' }}>
-                        {prod.latest_stock}
+                    <div className="text-right">
+                      <p className="text-2xl font-extrabold text-emerald-400">
+                        {prod.latest_price !== null ? `$${prod.latest_price}` : 'Pending'}
                       </p>
+                      <p className="text-xs text-gray-400">{prod.latest_stock || 'Unknown'}</p>
                     </div>
                   </div>
 
-                  {/* Scrape Logs Status */}
-                  <div style={{ fontSize: '12px', color: '#4b5563', backgroundColor: '#f9fafb', padding: '8px', borderRadius: '6px' }}>
-                    <strong>Recent Scrape Status: </strong>
+                  <div className="text-xs bg-gray-900 p-2.5 rounded border border-gray-800 text-gray-300">
+                    <span className="font-semibold text-gray-400">Recent Scrape Status: </span>
                     {prod.logs && prod.logs.length > 0 ? (
-                      <span style={{ color: prod.logs[0].outcome === 'success' ? '#059669' : '#dc2626' }}>
+                      <span className={prod.logs[0].outcome === 'success' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
                         {prod.logs[0].outcome.toUpperCase()} at {new Date(prod.logs[0].timestamp).toLocaleString()}
                       </span>
                     ) : (
-                      <span>No scrapes performed yet. Click 'Run Scrape Now'.</span>
+                      <span className="text-yellow-500">No scrapes performed yet. Click 'Run Scrape Now'.</span>
                     )}
                   </div>
+
+                  {/* Price History & Scrape Logs Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-gray-800">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-300 mb-2">Price History Log</h4>
+                      <div className="bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 border border-gray-800">
+                        {prod.logs && prod.logs.length > 0 ? (
+                          prod.logs.map((log, idx) => (
+                            <div key={idx} className="flex justify-between text-xs text-gray-400 border-b border-gray-800/50 pb-1">
+                              <span>{new Date(log.timestamp).toLocaleString()}</span>
+                              <span className="text-emerald-400 font-medium">{prod.latest_price ? `$${prod.latest_price}` : 'N/A'}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-500">No history recorded yet.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-300 mb-2">Recent Scrape Logs (Outcome & Timestamp)</h4>
+                      <div className="bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 border border-gray-800">
+                        {prod.logs && prod.logs.length > 0 ? (
+                          prod.logs.map((log, idx) => (
+                            <div key={idx} className="flex justify-between text-xs border-b border-gray-800/50 pb-1">
+                              <span className="text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                              <span className={log.outcome === 'success' ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                                {log.outcome.toUpperCase()} {log.error_message ? `(${log.error_message})` : ''}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-500">No logs available.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               ))}
             </div>
