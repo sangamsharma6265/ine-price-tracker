@@ -38,7 +38,11 @@ app.post('/api/products/track', async (req, res) => {
 
         const { data, error } = await supabase
             .from('products')
-            .insert([{ store_product_id, name, selected_option }])
+            .insert([{ 
+                store_product_id, 
+                name, 
+                selected_option 
+            }])
             .select();
 
         if (error) throw error;
@@ -49,7 +53,7 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// 2. Get All Tracked Products with Guaranteed price_history Array
+// 2. Get All Tracked Products with Full History & Logs
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -86,7 +90,7 @@ app.get('/api/products', async (req, res) => {
                 console.error(`Logs query failed for product ${prod.id}:`, logErr.message);
             }
 
-            // Format history array explicitly for frontend chart & logs table
+            // Frontend formatting
             const formattedHistory = (history || []).map(h => ({
                 id: h.id,
                 product_id: h.product_id,
@@ -95,7 +99,6 @@ app.get('/api/products', async (req, res) => {
                 timestamp: h.recorded_at || h.timestamp || h.created_at || new Date().toISOString()
             }));
 
-            // Format logs array
             const formattedLogs = (logs || []).map(l => ({
                 id: l.id,
                 product_id: l.product_id,
@@ -112,7 +115,7 @@ app.get('/api/products', async (req, res) => {
                 latest_price: formattedHistory.length > 0 ? formattedHistory[0].price : prod.current_price,
                 latest_stock: formattedHistory.length > 0 ? formattedHistory[0].stock : 'In Stock',
                 last_checked: formattedHistory.length > 0 ? formattedHistory[0].timestamp : null,
-                price_history: formattedHistory, // Key guaranteed present in JSON payload
+                price_history: formattedHistory,
                 logs: formattedLogs
             };
         }));
@@ -124,7 +127,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// 3. Pure Dynamic Scraper Engine Endpoint
+// 3. Robust Dynamic Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -137,9 +140,9 @@ app.get('/api/trigger-scrape', async (req, res) => {
         // Live mock store HTML fetch
         const response = await axios.get(MOCK_STORE_URL, {
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
             },
-            timeout: 15000 
+            timeout: 20000 
         });
 
         const $ = cheerio.load(response.data);
@@ -151,22 +154,17 @@ app.get('/api/trigger-scrape', async (req, res) => {
             const currentTime = new Date().toISOString();
 
             try {
-                // Strict isolation: Find specific item by name, then extract price in that card only
-                $('h1, h2, h3, h4, h5, p, span, div').each((i, el) => {
-                    const text = $(el).children().remove().end().text().trim().toLowerCase();
+                // Selector Pattern 1: Exact product card context
+                $('*').each((i, el) => {
+                    if (scrapedPrice !== null) return;
                     
-                    if (scrapedPrice === null && prod.name && text === prod.name.toLowerCase()) {
-                        const card = $(el).closest('.product, .product-item, .card, .product-card, div[class*="product"], div[class*="item"]');
-                        
-                        const priceElement = card.find('.price, .amount, [class*="price"]').first();
-                        let priceText = priceElement.length ? priceElement.text() : '';
+                    const elText = $(el).clone().children().remove().end().text().trim();
+                    if (prod.name && elText.toLowerCase() === prod.name.toLowerCase()) {
+                        const parent = $(el).parent();
+                        const grandParent = parent.parent();
+                        const cardText = grandParent.text();
 
-                        if (!priceText) {
-                            const matchDollar = card.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-                            if (matchDollar) priceText = matchDollar[0];
-                        }
-
-                        const match = priceText.match(/([0-9]+(?:\.[0-9]{1,2})?)/);
+                        const match = cardText.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
                         if (match) {
                             const val = parseFloat(match[1]);
                             if (!isNaN(val) && val > 0) {
@@ -176,26 +174,43 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 });
 
-                // Fallback: Name pattern regex search
+                // Selector Pattern 2: Global document body forward match
                 if (scrapedPrice === null) {
-                    const bodyText = $('body').text();
+                    const fullBody = $('body').text().replace(/\s+/g, ' ');
                     const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`${escaped}[^$]{0,100}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
-                    const match = bodyText.match(regex);
+                    const regex = new RegExp(`${escaped}[^$]{0,250}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
+                    const match = fullBody.match(regex);
                     if (match) {
-                        scrapedPrice = parseFloat(match[1]);
+                        const val = parseFloat(match[1]);
+                        if (!isNaN(val) && val > 0) {
+                            scrapedPrice = val;
+                        }
+                    }
+                }
+
+                // Selector Pattern 3: Global document body reverse match
+                if (scrapedPrice === null) {
+                    const fullBody = $('body').text().replace(/\s+/g, ' ');
+                    const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const revRegex = new RegExp(`\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)[^a-zA-Z0-9]{0,50}${escaped}`, 'i');
+                    const match = fullBody.match(revRegex);
+                    if (match) {
+                        const val = parseFloat(match[1]);
+                        if (!isNaN(val) && val > 0) {
+                            scrapedPrice = val;
+                        }
                     }
                 }
 
                 if (scrapedPrice === null || isNaN(scrapedPrice)) {
-                    throw new Error(`Real-time price could not be located in HTML for: ${prod.name}`);
+                    throw new Error(`Real-time price extraction failed for: ${prod.name}`);
                 }
 
-                // Match with integer ID '1' or String prod.id
-                const targetNumericId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
-                const targetId = targetNumericId || String(prod.id);
+                // Database numeric ID and UUID mapping
+                const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
+                const targetId = numId || String(prod.id);
 
-                // 1. Insert genuine scraped price directly into price_history
+                // 1. Insert into price_history
                 const { error: histInsertErr } = await supabase.from('price_history').insert([{
                     product_id: targetId,
                     price: scrapedPrice,
@@ -204,18 +219,15 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     timestamp: currentTime
                 }]);
 
-                if (histInsertErr) {
-                    console.error("Price history insert error:", histInsertErr);
-                    throw histInsertErr;
-                }
+                if (histInsertErr) throw histInsertErr;
 
-                // 2. Update current_price in products table
+                // 2. Update current_price in products
                 await supabase
                     .from('products')
                     .update({ current_price: scrapedPrice })
                     .eq('id', prod.id);
 
-                // 3. Log success
+                // 3. Insert SUCCESS log
                 await supabase.from('scrape_logs').insert([{
                     product_id: targetId,
                     outcome: 'success',
@@ -224,13 +236,13 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     created_at: currentTime
                 }]);
 
-                results.push({ product: prod.name, status: 'success', price: scrapedPrice, timestamp: currentTime });
+                results.push({ product: prod.name, status: 'success', price: scrapedPrice });
 
             } catch (itemErr) {
                 console.error(`Scrape failed for ${prod.name}:`, itemErr.message);
 
-                const targetNumericId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
-                const targetId = targetNumericId || String(prod.id);
+                const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
+                const targetId = numId || String(prod.id);
 
                 await supabase.from('scrape_logs').insert([{
                     product_id: targetId,
