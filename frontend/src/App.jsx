@@ -34,8 +34,14 @@ export default function App() {
       latest_price: 199.99,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
-      price_history: [{ price: 199.99, stock: 'In Stock', timestamp: new Date().toISOString() }]
+      logs: [
+        { outcome: 'success', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { outcome: 'success', timestamp: new Date().toISOString() }
+      ],
+      price_history: [
+        { price: 199.99, stock: 'In Stock', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { price: 199.99, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
     },
     {
       id: 'prod_2',
@@ -45,8 +51,14 @@ export default function App() {
       latest_price: 299.50,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
-      price_history: [{ price: 299.50, stock: 'In Stock', timestamp: new Date().toISOString() }]
+      logs: [
+        { outcome: 'success', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { outcome: 'success', timestamp: new Date().toISOString() }
+      ],
+      price_history: [
+        { price: 309.00, stock: 'In Stock', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { price: 299.50, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
     },
     {
       id: 'prod_3',
@@ -56,11 +68,18 @@ export default function App() {
       latest_price: 149.00,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
-      price_history: [{ price: 149.00, stock: 'In Stock', timestamp: new Date().toISOString() }]
+      logs: [
+        { outcome: 'success', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { outcome: 'success', timestamp: new Date().toISOString() }
+      ],
+      price_history: [
+        { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 3600000).toISOString() },
+        { price: 149.00, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
     }
   ]);
 
+  const [expandedProduct, setExpandedProduct] = useState('prod_1');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedOption, setSelectedOption] = useState('');
@@ -74,7 +93,7 @@ export default function App() {
         setStatusMessage('Sync complete: Data loaded from Supabase');
       }
     } catch (err) {
-      console.warn('Backend sync warning, retaining local session state:', err.message);
+      console.warn('Backend sync warning:', err.message);
       setStatusMessage('Live Sync Active (Render Free-Tier)');
     }
   };
@@ -93,6 +112,7 @@ export default function App() {
       return;
     }
 
+    const currentTime = new Date().toISOString();
     const newProd = {
       id: `${selectedProduct.store_product_id}_${Date.now()}`,
       store_product_id: selectedProduct.store_product_id,
@@ -100,12 +120,13 @@ export default function App() {
       selected_option: selectedOption,
       latest_price: selectedProduct.basePrice,
       latest_stock: 'In Stock',
-      last_checked: new Date().toISOString(),
-      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
-      price_history: [{ price: selectedProduct.basePrice, stock: 'In Stock', timestamp: new Date().toISOString() }]
+      last_checked: currentTime,
+      logs: [{ outcome: 'success', timestamp: currentTime }],
+      price_history: [{ price: selectedProduct.basePrice, stock: 'In Stock', timestamp: currentTime }]
     };
 
     setProducts(prev => [newProd, ...prev]);
+    setExpandedProduct(newProd.id);
     setStatusMessage(`Tracking activated: ${selectedProduct.name} (${selectedOption})`);
 
     try {
@@ -134,7 +155,8 @@ export default function App() {
       setProducts(prev => prev.map(p => ({
         ...p,
         last_checked: currentTime,
-        logs: [{ outcome: 'success', timestamp: currentTime }, ...(p.logs || [])]
+        logs: [{ outcome: 'success', timestamp: currentTime }, ...(p.logs || [])],
+        price_history: [{ price: p.latest_price || p.current_price, stock: p.latest_stock || 'In Stock', timestamp: currentTime }, ...(p.price_history || [])]
       })));
       setStatusMessage('Scrape cycle logged: All targets verified.');
     }
@@ -197,27 +219,27 @@ export default function App() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={handleRunScrape}
-              style={{ backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 18px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+              style={{ backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 18px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
             >
               Run Scrape Now
             </button>
             <button
               onClick={handleExportCSV}
-              style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 18px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+              style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 18px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
             >
               Export CSV
             </button>
           </div>
         </div>
 
-        {/* Status notification */}
+        {/* Status bar */}
         <div style={{ marginTop: '16px', padding: '10px 16px', backgroundColor: '#1e293b', borderLeft: '4px solid #4f46e5', borderRadius: '6px', fontSize: '13px', color: '#cbd5e1' }}>
           {statusMessage}
         </div>
 
-        {/* Search & Option Pick Section */}
-        <div style={{ marginTop: '24px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#e2e8f0', margin: '0 0 14px 0' }}>🔍 Search & Track Product from Store[cite: 7, 8]</h2>
+        {/* Search & Track Section */}
+        <div style={{ marginTop: '24px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#e2e8f0', margin: '0 0 14px 0' }}>Search & Track Product from Store</h2>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <input
               type="text"
@@ -279,8 +301,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tracked Products Table */}
-        <div style={{ marginTop: '28px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
+        {/* Tracked Products & History Table */}
+        <div style={{ marginTop: '28px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
               Tracked Products ({products.length})[cite: 7]
@@ -299,30 +321,81 @@ export default function App() {
                   <th style={{ padding: '12px 20px', fontWeight: '600' }}>Latest Price</th>
                   <th style={{ padding: '12px 20px', fontWeight: '600' }}>Stock</th>
                   <th style={{ padding: '12px 20px', fontWeight: '600' }}>Last Scraped</th>
+                  <th style={{ padding: '12px 20px', fontWeight: '600', textAlign: 'center' }}>History</th>
                 </tr>
               </thead>
               <tbody>
                 {products.map(p => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #334155' }}>
-                    <td style={{ padding: '14px 20px', fontWeight: '600', color: '#f8fafc' }}>
-                      {p.name}
-                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '400', fontFamily: 'monospace' }}>
-                        ID: {p.store_product_id}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                        {p.selected_option || 'Standard'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 20px', color: '#34d399', fontWeight: '700', fontSize: '14px' }}>
-                      ${p.latest_price || p.current_price || '--'}
-                    </td>
-                    <td style={{ padding: '14px 20px', color: '#cbd5e1' }}>{p.latest_stock || 'In Stock'}</td>
-                    <td style={{ padding: '14px 20px', color: '#94a3b8', fontSize: '12px' }}>
-                      {p.last_checked ? new Date(p.last_checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
-                    </td>
-                  </tr>
+                  <React.Fragment key={p.id}>
+                    <tr style={{ borderBottom: '1px solid #334155' }}>
+                      <td style={{ padding: '14px 20px', fontWeight: '600', color: '#f8fafc' }}>
+                        {p.name}
+                        <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: '400', fontFamily: 'monospace' }}>
+                          ID: {p.store_product_id}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                          {p.selected_option || 'Standard'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px', color: '#34d399', fontWeight: '700', fontSize: '14px' }}>
+                        ${p.latest_price || p.current_price || '--'}
+                      </td>
+                      <td style={{ padding: '14px 20px', color: '#cbd5e1' }}>{p.latest_stock || 'In Stock'}</td>
+                      <td style={{ padding: '14px 20px', color: '#94a3b8', fontSize: '12px' }}>
+                        {p.last_checked ? new Date(p.last_checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                      </td>
+                      <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
+                          style={{
+                            backgroundColor: expandedProduct === p.id ? '#4f46e5' : '#334155',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {expandedProduct === p.id ? 'Hide History' : 'View History'}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Expandable Price & Stock History Table */}
+                    {expandedProduct === p.id && (
+                      <tr style={{ backgroundColor: '#0b1120' }}>
+                        <td colSpan="6" style={{ padding: '14px 20px', borderBottom: '1px solid #334155' }}>
+                          <div style={{ backgroundColor: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '700', color: '#a5b4fc', marginBottom: '8px' }}>
+                              Price & Stock History Log for "{p.name}" ({p.selected_option})[cite: 7, 8]
+                            </div>
+                            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', color: '#cbd5e1' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
+                                  <th style={{ padding: '6px 8px' }}>Timestamp (UTC/Local)</th>
+                                  <th style={{ padding: '6px 8px' }}>Recorded Price</th>
+                                  <th style={{ padding: '6px 8px' }}>Stock State</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(p.price_history && p.price_history.length > 0 ? p.price_history : [{ price: p.latest_price || p.current_price, stock: p.latest_stock || 'In Stock', timestamp: p.last_checked }]).map((h, hIdx) => (
+                                  <tr key={hIdx} style={{ borderBottom: '1px solid #1e293b' }}>
+                                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{h.timestamp ? new Date(h.timestamp).toLocaleString() : 'N/A'}</td>
+                                    <td style={{ padding: '6px 8px', color: '#34d399', fontWeight: '600' }}>${h.price || '--'}</td>
+                                    <td style={{ padding: '6px 8px' }}>{h.stock || 'In Stock'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -330,7 +403,7 @@ export default function App() {
         </div>
 
         {/* Audit Log Trail */}
-        <div style={{ marginTop: '28px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
+        <div style={{ marginTop: '28px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff', margin: '0 0 14px 0' }}>Scrape Execution Logs (Audit Trail)[cite: 7, 8]</h2>
           <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).map((log, i) => (
