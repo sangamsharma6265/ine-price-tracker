@@ -8,6 +8,7 @@ const STORE_CATALOG = [
     store_product_id: 'prod_1',
     name: 'Ultra Wireless Noise-Cancelling Headphones',
     category: 'Audio & Acoustics',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
     basePrice: 199.99,
     options: ['Black / 32GB', 'Black / 64GB', 'White / 32GB', 'White / 64GB']
   },
@@ -15,6 +16,7 @@ const STORE_CATALOG = [
     store_product_id: 'prod_2',
     name: 'Ergonomic Mesh Office Chair',
     category: 'Workplace Furniture',
+    image: 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?w=500&auto=format&fit=crop&q=60',
     basePrice: 299.50,
     options: ['Mesh Grey', 'Leather Black']
   },
@@ -22,6 +24,7 @@ const STORE_CATALOG = [
     store_product_id: 'prod_3',
     name: 'Smart Fitness Tracker Watch',
     category: 'Wearables & Health',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60',
     basePrice: 149.00,
     options: ['Sport Band', 'Steel Band']
   }
@@ -34,6 +37,7 @@ export default function App() {
       store_product_id: 'prod_1',
       name: 'Ultra Wireless Noise-Cancelling Headphones',
       category: 'Audio & Acoustics',
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
       selected_option: 'Black / 32GB',
       latest_price: 199.99,
       latest_stock: 'In Stock',
@@ -50,6 +54,7 @@ export default function App() {
       store_product_id: 'prod_1',
       name: 'Ultra Wireless Noise-Cancelling Headphones',
       category: 'Audio & Acoustics',
+      image: 'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500&auto=format&fit=crop&q=60',
       selected_option: 'White / 64GB',
       latest_price: 229.99,
       latest_stock: 'In Stock',
@@ -65,6 +70,7 @@ export default function App() {
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
+      image: 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?w=500&auto=format&fit=crop&q=60',
       selected_option: 'Mesh Grey',
       latest_price: 299.50,
       latest_stock: 'In Stock',
@@ -81,6 +87,7 @@ export default function App() {
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
+      image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=60',
       selected_option: 'Leather Black',
       latest_price: 349.00,
       latest_stock: 'In Stock',
@@ -96,6 +103,7 @@ export default function App() {
       store_product_id: 'prod_3',
       name: 'Smart Fitness Tracker Watch',
       category: 'Wearables & Health',
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60',
       selected_option: 'Sport Band',
       latest_price: 149.00,
       latest_stock: 'In Stock',
@@ -111,6 +119,7 @@ export default function App() {
       store_product_id: 'prod_3',
       name: 'Smart Fitness Tracker Watch',
       category: 'Wearables & Health',
+      image: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=500&auto=format&fit=crop&q=60',
       selected_option: 'Steel Band',
       latest_price: 189.00,
       latest_stock: 'In Stock',
@@ -165,6 +174,7 @@ export default function App() {
       store_product_id: selectedCatalogItem.store_product_id,
       name: selectedCatalogItem.name,
       category: selectedCatalogItem.category || 'General',
+      image: selectedCatalogItem.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60',
       selected_option: selectedOption,
       latest_price: selectedCatalogItem.basePrice,
       latest_stock: 'In Stock',
@@ -274,8 +284,8 @@ export default function App() {
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
-    const width = 110;
-    const height = 30;
+    const width = 100;
+    const height = 28;
     const step = width / (prices.length - 1);
 
     const points = prices.map((val, idx) => {
@@ -619,12 +629,12 @@ export default function App() {
           </button>
         </div>
 
-        {/* 3. PRODUCT CARDS WITH SMOOTH HOVER EFFECT */}
+        {/* 3. PRODUCT CARDS WITH PRODUCT IMAGES & HOVER */}
         {activeTab === 'grid' && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-            gap: '20px'
+            gap: '22px'
           }}>
             {products.map((p) => {
               const priceHistory = p.price_history || [];
@@ -642,7 +652,7 @@ export default function App() {
                     backgroundColor: '#111827',
                     border: isHovered ? '1px solid #6366f1' : '1px solid #1f293d',
                     borderRadius: '16px',
-                    padding: '20px',
+                    overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -655,34 +665,76 @@ export default function App() {
                     cursor: 'default'
                   }}
                 >
-                  <div>
-                    {/* Top Tag & Stock */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {/* Product Preview Image Banner */}
+                  <div style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '140px',
+                    backgroundColor: '#0a0f1d',
+                    overflow: 'hidden'
+                  }}>
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        opacity: 0.85,
+                        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                        transition: 'transform 0.4s ease'
+                      }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, #111827 5%, transparent 60%)'
+                    }} />
+
+                    {/* Badge Overlay */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '12px',
+                      left: '14px',
+                      right: '14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
                       <span style={{
                         fontSize: '11px',
                         fontFamily: 'monospace',
-                        color: '#818cf8',
-                        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                        color: '#ffffff',
+                        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                        backdropFilter: 'blur(4px)',
                         padding: '3px 8px',
                         borderRadius: '6px',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        border: '1px solid rgba(255,255,255,0.1)'
                       }}>
                         {p.store_product_id}
                       </span>
                       <span style={{
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        color: '#34d399',
+                        backgroundColor: 'rgba(16, 185, 129, 0.9)',
+                        color: '#ffffff',
                         fontSize: '11px',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         padding: '3px 8px',
-                        borderRadius: '6px'
+                        borderRadius: '6px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
                       }}>
                         {p.latest_stock || 'In Stock'}
                       </span>
                     </div>
+                  </div>
 
-                    {/* Product Name */}
-                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', margin: '12px 0 6px', lineHeight: '1.4' }}>
+                  {/* Card Content Body */}
+                  <div style={{ padding: '16px 20px 0 20px' }}>
+                    <div style={{ fontSize: '11px', color: '#818cf8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {p.category || 'Retail Goods'}
+                    </div>
+
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', margin: '4px 0 8px', lineHeight: '1.4' }}>
                       {p.name}
                     </h3>
 
@@ -734,14 +786,14 @@ export default function App() {
 
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <span style={{ fontSize: '9px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Price Trend</span>
-                        <div style={{ width: '110px', height: '30px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <div style={{ width: '100px', height: '28px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {renderSparkline(p.price_history)}
                         </div>
                       </div>
                     </div>
 
                     {/* Timestamp */}
-                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '14px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>Last scraped:</span>
                       <span style={{ color: '#94a3b8', fontFamily: 'monospace' }}>
                         {p.last_checked ? new Date(p.last_checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Pending'}
@@ -755,7 +807,8 @@ export default function App() {
                     gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '8px',
                     borderTop: '1px solid #1f293d',
-                    paddingTop: '14px'
+                    padding: '14px 20px 18px 20px',
+                    backgroundColor: '#111827'
                   }}>
                     <button
                       onClick={() => setSelectedProductModal(p)}
@@ -931,7 +984,7 @@ export default function App() {
           </div>
         )}
 
-        {/* 6. SYSTEM HEALTH & CRON TELEMETRY (PLACED PROPERLY AT THE BOTTOM) */}
+        {/* 6. SYSTEM HEALTH & CRON TELEMETRY */}
         <section style={{
           marginTop: '36px',
           borderTop: '1px solid #1f293d',
@@ -976,6 +1029,71 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* 7. COMPANY OVERVIEW & ABOUT THE PLATFORM (PAGE RICH FOOTER) */}
+        <footer style={{
+          marginTop: '48px',
+          backgroundColor: '#111827',
+          border: '1px solid #1f293d',
+          borderRadius: '20px',
+          padding: '36px 32px',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '32px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '22px' }}>🏢</span>
+                <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff', margin: 0 }}>INE Price Tracker Enterprise</h4>
+              </div>
+              <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                High-frequency price auditing and variant inventory tracker built for mock e-commerce ecosystems[cite: 8]. Provides continuous DOM parsing, fault-tolerant retry loops, and cold-start resilient persistence on Supabase[cite: 7, 8].
+              </p>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#e2e8f0', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Core Capabilities</h4>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.8' }}>
+                <li>Headless browser scraping with Playwright & Cheerio[cite: 10]</li>
+                <li>Real variant multiplier mapping & pricing matrix[cite: 7, 8]</li>
+                <li>Strict 7-Column CSV export standard compliance[cite: 7]</li>
+                <li>External Webhook Cron Ping (2-Hour Interval)[cite: 7, 9]</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#e2e8f0', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Architecture & Stack</h4>
+              <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: '0 0 10px 0' }}>
+                Deployed on <strong>Vercel</strong> (Vite React Frontend) and <strong>Render</strong> (Node.js API) with persistent PostgreSQL via <strong>Supabase</strong>[cite: 7, 10].
+              </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#1e293b', fontSize: '11px', color: '#818cf8', fontWeight: '600' }}>React 18</span>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#1e293b', fontSize: '11px', color: '#34d399', fontWeight: '600' }}>Node.js / Express</span>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#1e293b', fontSize: '11px', color: '#38bdf8', fontWeight: '600' }}>Supabase DB</span>
+                <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#1e293b', fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>Playwright</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: '32px',
+            borderTop: '1px solid #1f293d',
+            paddingTop: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+            fontSize: '12px',
+            color: '#64748b'
+          }}>
+            <span>© 2026 INE Product Price Tracker Project. All rights reserved.</span>
+            <span>Target Endpoint: <code style={{ color: '#818cf8' }}>https://demo.inelabteamdev.com/</code>[cite: 8]</span>
+          </div>
+        </footer>
 
         {/* MODAL FOR PRODUCT PRICE HISTORY */}
         {selectedProductModal && (
