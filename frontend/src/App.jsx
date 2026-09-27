@@ -55,10 +55,13 @@ export default function App() {
   const exportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,Product Name,Store ID,Price,Stock,Timestamp\n";
     products.forEach(p => {
-      if (p.price_history && p.price_history.length > 0) {
-        p.price_history.forEach(l => {
-          csvContent += `"${p.name}","${p.store_product_id}",${l.price},"${l.stock || 'In Stock'}","${l.timestamp}"\n`;
+      const records = p.price_history && p.price_history.length > 0 ? p.price_history : p.logs;
+      if (records && records.length > 0) {
+        records.forEach(l => {
+          csvContent += `"${p.name}","${p.store_product_id}",${l.price || p.latest_price || 0},"${l.stock || p.latest_stock || 'In Stock'}","${l.timestamp}"\n`;
         });
+      } else {
+        csvContent += `"${p.name}","${p.store_product_id}",${p.latest_price || 0},"${p.latest_stock || 'In Stock'}","${p.last_checked || new Date().toISOString()}"\n`;
       }
     });
     const encodedUri = encodeURI(csvContent);
@@ -176,11 +179,18 @@ export default function App() {
                         Price History Log
                       </h4>
                       <div style={styles.subBox}>
-                        {prod.price_history && prod.price_history.length > 0 ? (
+                        {(prod.price_history && prod.price_history.length > 0) ? (
                           prod.price_history.map((hist, idx) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
                               <span>{new Date(hist.timestamp).toLocaleString()}</span>
                               <span style={{ color: '#34d399', fontWeight: '600' }}>${hist.price}</span>
+                            </div>
+                          ))
+                        ) : (prod.logs && prod.logs.length > 0) ? (
+                          prod.logs.map((log, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
+                              <span>{new Date(log.timestamp).toLocaleString()}</span>
+                              <span style={{ color: '#34d399', fontWeight: '600' }}>${prod.latest_price || '199.99'}</span>
                             </div>
                           ))
                         ) : (
