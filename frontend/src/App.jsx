@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE = 'https://ine-price-tracker-backend.onrender.com';
 
 const CHAIR_IMG = 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=80';
-const CHAIR_BLACK_IMG = 'https://images.unsplash.com/photo-1589384267710-7a25be112d8a?w=500&auto=format&fit=crop&q=80';
+const CHAIR_BLACK_IMG = '/chair.jpg';
 
 const STORE_CATALOG = [
   {
