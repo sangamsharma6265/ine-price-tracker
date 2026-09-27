@@ -30,7 +30,7 @@ const STORE_CATALOG = [
 export default function App() {
   const [products, setProducts] = useState([
     {
-      id: 'prod_1',
+      id: 'prod_1_32gb_black',
       store_product_id: 'prod_1',
       name: 'Ultra Wireless Noise-Cancelling Headphones',
       category: 'Audio & Acoustics',
@@ -38,10 +38,7 @@ export default function App() {
       latest_price: 199.99,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [
-        { outcome: 'success', timestamp: new Date(Date.now() - 7200000).toISOString() },
-        { outcome: 'success', timestamp: new Date().toISOString() }
-      ],
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 219.99, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
         { price: 209.99, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
@@ -49,7 +46,22 @@ export default function App() {
       ]
     },
     {
-      id: 'prod_2',
+      id: 'prod_1_64gb_white',
+      store_product_id: 'prod_1',
+      name: 'Ultra Wireless Noise-Cancelling Headphones',
+      category: 'Audio & Acoustics',
+      selected_option: 'White / 64GB',
+      latest_price: 229.99,
+      latest_stock: 'In Stock',
+      last_checked: new Date().toISOString(),
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
+      price_history: [
+        { price: 239.99, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
+        { price: 229.99, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
+    },
+    {
+      id: 'prod_2_mesh_grey',
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
@@ -57,10 +69,7 @@ export default function App() {
       latest_price: 299.50,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [
-        { outcome: 'success', timestamp: new Date(Date.now() - 7200000).toISOString() },
-        { outcome: 'success', timestamp: new Date().toISOString() }
-      ],
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 320.00, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
         { price: 309.00, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
@@ -68,7 +77,22 @@ export default function App() {
       ]
     },
     {
-      id: 'prod_3',
+      id: 'prod_2_leather_black',
+      store_product_id: 'prod_2',
+      name: 'Ergonomic Mesh Office Chair',
+      category: 'Workplace Furniture',
+      selected_option: 'Leather Black',
+      latest_price: 349.00,
+      latest_stock: 'In Stock',
+      last_checked: new Date().toISOString(),
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
+      price_history: [
+        { price: 359.00, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
+        { price: 349.00, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
+    },
+    {
+      id: 'prod_3_sport_band',
       store_product_id: 'prod_3',
       name: 'Smart Fitness Tracker Watch',
       category: 'Wearables & Health',
@@ -76,27 +100,38 @@ export default function App() {
       latest_price: 149.00,
       latest_stock: 'In Stock',
       last_checked: new Date().toISOString(),
-      logs: [
-        { outcome: 'success', timestamp: new Date(Date.now() - 7200000).toISOString() },
-        { outcome: 'success', timestamp: new Date().toISOString() }
-      ],
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
-        { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
         { price: 149.00, stock: 'In Stock', timestamp: new Date().toISOString() }
+      ]
+    },
+    {
+      id: 'prod_3_steel_band',
+      store_product_id: 'prod_3',
+      name: 'Smart Fitness Tracker Watch',
+      category: 'Wearables & Health',
+      selected_option: 'Steel Band',
+      latest_price: 189.00,
+      latest_stock: 'In Stock',
+      last_checked: new Date().toISOString(),
+      logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
+      price_history: [
+        { price: 199.00, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
+        { price: 189.00, stock: 'In Stock', timestamp: new Date().toISOString() }
       ]
     }
   ]);
 
-  const [activeTab, setActiveTab] = useState('grid'); // 'grid' | 'table' | 'logs'
+  const [activeTab, setActiveTab] = useState('grid');
+  const [hoveredCardId, setHoveredCardId] = useState(null);
   const [selectedProductModal, setSelectedProductModal] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatalogItem, setSelectedCatalogItem] = useState(null);
   const [selectedOption, setSelectedOption] = useState('');
-  const [statusMessage, setStatusMessage] = useState('Real-Time Monitoring Active (Render + Supabase)');
+  const [statusMessage, setStatusMessage] = useState('Live Tracking Engine Active (Render + Supabase)');
   const [isScraping, setIsScraping] = useState(false);
 
-  // Sync products from backend
   const fetchTrackedProducts = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/products`, { timeout: 8000 });
@@ -118,7 +153,6 @@ export default function App() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Add Product to Track
   const handleTrackProduct = async () => {
     if (!selectedCatalogItem || !selectedOption) {
       alert('Please choose both a product and an option to track.');
@@ -149,7 +183,7 @@ export default function App() {
         selected_option: selectedOption
       }, { timeout: 5000 });
     } catch (e) {
-      console.warn('Persisted locally');
+      console.warn('Persisted in local session');
     }
 
     setSearchTerm('');
@@ -157,7 +191,6 @@ export default function App() {
     setSelectedOption('');
   };
 
-  // Run Global or Single Scrape
   const handleRunScrape = async (targetProductId = null) => {
     setIsScraping(true);
     setStatusMessage(targetProductId ? `Scraping item ID: ${targetProductId}...` : 'Executing full mock store scraping cycle...');
@@ -184,7 +217,6 @@ export default function App() {
     }
   };
 
-  // Export 7-Column CSV (Global or Single Product)
   const handleExportCSV = (singleProduct = null) => {
     const headers = [
       'store_product_id',
@@ -230,38 +262,37 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // Helper: Mini SVG Sparkline Generator
   const renderSparkline = (history) => {
     const prices = (history || []).map(h => parseFloat(h.price) || 0).filter(p => p > 0);
     if (prices.length < 2) {
       return (
-        <div style={{ height: '38px', display: 'flex', alignItems: 'center', color: '#64748b', fontSize: '11px' }}>
-          Constant baseline price
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', color: '#64748b', fontSize: '10px' }}>
+          Baseline stable
         </div>
       );
     }
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
-    const width = 160;
-    const height = 36;
+    const width = 110;
+    const height = 30;
     const step = width / (prices.length - 1);
 
     const points = prices.map((val, idx) => {
       const x = idx * step;
-      const y = height - ((val - min) / range) * (height - 8) - 4;
-      return `${x},${y}`;
+      const y = height - ((val - min) / range) * (height - 6) - 3;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
 
     const isDecreasing = prices[prices.length - 1] <= prices[0];
     const strokeColor = isDecreasing ? '#10b981' : '#f59e0b';
 
     return (
-      <svg width={width} height={height} style={{ overflow: 'visible' }}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', overflow: 'hidden' }}>
         <polyline
           fill="none"
           stroke={strokeColor}
-          strokeWidth="2.5"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={points}
@@ -276,18 +307,18 @@ export default function App() {
       minHeight: '100vh',
       color: '#f1f5f9',
       fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '28px 20px',
+      padding: '24px 20px',
       boxSizing: 'border-box'
     }}>
       <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
 
-        {/* TOP NAVIGATION / NAVBAR */}
+        {/* 1. TOP NAVBAR / HEADER */}
         <header style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           backgroundColor: '#111827',
-          padding: '18px 24px',
+          padding: '16px 24px',
           borderRadius: '16px',
           border: '1px solid #1f293d',
           boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
@@ -321,11 +352,11 @@ export default function App() {
                   padding: '2px 8px',
                   borderRadius: '20px'
                 }}>
-                  v2.4 LIVE
+                  LIVE
                 </span>
               </div>
               <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                Monitoring Target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: '500' }}>demo.inelabteamdev.com</a>[cite: 8]
+                Target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: '500' }}>demo.inelabteamdev.com</a>[cite: 8]
               </p>
             </div>
           </div>
@@ -339,7 +370,7 @@ export default function App() {
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '10px',
-                padding: '10px 20px',
+                padding: '10px 18px',
                 fontWeight: '600',
                 fontSize: '13px',
                 cursor: isScraping ? 'not-allowed' : 'pointer',
@@ -375,72 +406,21 @@ export default function App() {
           </div>
         </header>
 
-        {/* METRICS & OVERVIEW CARDS */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          marginTop: '20px'
-        }}>
-          <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '16px 20px' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Tracked Products</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#ffffff', marginTop: '6px' }}>{products.length}</div>
-            <span style={{ fontSize: '11px', color: '#10b981' }}>● All Active & Persistent</span>
-          </div>
-
-          <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '16px 20px' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Scrape Automation</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#818cf8', marginTop: '6px' }}>2-Hour</div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>cron-job.org Ping Active</span>
-          </div>
-
-          <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '16px 20px' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Backend & Database</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', marginTop: '6px' }}>200 OK</div>
-            <span style={{ fontSize: '11px', color: '#10b981' }}>Supabase PostgreSQL Connected</span>
-          </div>
-
-          <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '16px 20px' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Audit Log Total</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#f59e0b', marginTop: '6px' }}>
-              {products.reduce((acc, curr) => acc + (curr.logs?.length || 0), 0)} Runs[cite: 1]
-            </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Fault-tolerant retry enabled</span>
-          </div>
-        </div>
-
-        {/* STATUS BANNER */}
-        <div style={{
-          marginTop: '16px',
-          padding: '10px 18px',
-          backgroundColor: 'rgba(31, 41, 55, 0.6)',
-          borderLeft: '4px solid #6366f1',
-          borderRadius: '8px',
-          fontSize: '13px',
-          color: '#cbd5e1',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span style={{ color: '#818cf8' }}>ℹ️</span>
-          <span>{statusMessage}</span>
-        </div>
-
-        {/* SEARCH & TRACK INTERACTIVE BAR */}
+        {/* 2. SEARCH & ADD PRODUCT (DIRECTLY BELOW HEADER) */}
         <section style={{
-          marginTop: '22px',
+          marginTop: '18px',
           backgroundColor: '#111827',
           border: '1px solid #1f293d',
           borderRadius: '16px',
-          padding: '20px 24px',
+          padding: '18px 24px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-            <span style={{ fontSize: '18px' }}>🔍</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '16px' }}>🔍</span>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
-              Search & Add Mock Store Product
+              Search & Track Product from Store[cite: 1, 2]
             </h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>— Search store catalogue, pick options, and add to tracking loop</span>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>— Search mock store catalog and pick variant option to monitor</span>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -458,7 +438,7 @@ export default function App() {
                 backgroundColor: '#0a0f1d',
                 border: '1px solid #334155',
                 borderRadius: '10px',
-                padding: '11px 16px',
+                padding: '10px 16px',
                 color: '#ffffff',
                 fontSize: '13px',
                 outline: 'none'
@@ -478,7 +458,7 @@ export default function App() {
                   backgroundColor: '#0a0f1d',
                   border: '1px solid #4f46e5',
                   borderRadius: '10px',
-                  padding: '11px 16px',
+                  padding: '10px 16px',
                   color: '#ffffff',
                   fontSize: '13px',
                   outline: 'none'
@@ -502,7 +482,7 @@ export default function App() {
                   backgroundColor: '#0a0f1d',
                   border: '1px solid #4f46e5',
                   borderRadius: '10px',
-                  padding: '11px 16px',
+                  padding: '10px 16px',
                   color: '#ffffff',
                   fontSize: '13px',
                   outline: 'none'
@@ -522,7 +502,7 @@ export default function App() {
                 color: selectedCatalogItem ? '#ffffff' : '#64748b',
                 border: 'none',
                 borderRadius: '10px',
-                padding: '11px 24px',
+                padding: '10px 22px',
                 fontWeight: '600',
                 fontSize: '13px',
                 cursor: selectedCatalogItem ? 'pointer' : 'not-allowed',
@@ -535,12 +515,29 @@ export default function App() {
           </div>
         </section>
 
+        {/* STATUS BANNER */}
+        <div style={{
+          marginTop: '14px',
+          padding: '9px 16px',
+          backgroundColor: 'rgba(31, 41, 55, 0.6)',
+          borderLeft: '4px solid #6366f1',
+          borderRadius: '8px',
+          fontSize: '12px',
+          color: '#cbd5e1',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ color: '#818cf8' }}>ℹ️</span>
+          <span>{statusMessage}</span>
+        </div>
+
         {/* VIEW SELECTOR TABS */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginTop: '32px',
+          marginTop: '22px',
           marginBottom: '16px',
           flexWrap: 'wrap',
           gap: '12px'
@@ -609,7 +606,7 @@ export default function App() {
               border: '1px solid #334155',
               borderRadius: '8px',
               color: '#94a3b8',
-              padding: '7px 14px',
+              padding: '6px 14px',
               fontSize: '12px',
               fontWeight: '500',
               cursor: 'pointer',
@@ -622,7 +619,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* 1. PRODUCT CARDS GRID (PREMIUM FINTECH CARDS) */}
+        {/* 3. PRODUCT CARDS WITH SMOOTH HOVER EFFECT */}
         {activeTab === 'grid' && (
           <div style={{
             display: 'grid',
@@ -634,26 +631,33 @@ export default function App() {
               const latestPrice = p.latest_price || p.current_price || 0;
               const firstPrice = priceHistory.length > 0 ? priceHistory[0].price : latestPrice;
               const priceDiff = latestPrice - firstPrice;
+              const isHovered = hoveredCardId === p.id;
 
               return (
                 <div
                   key={p.id}
+                  onMouseEnter={() => setHoveredCardId(p.id)}
+                  onMouseLeave={() => setHoveredCardId(null)}
                   style={{
                     backgroundColor: '#111827',
-                    border: '1px solid #1f293d',
+                    border: isHovered ? '1px solid #6366f1' : '1px solid #1f293d',
                     borderRadius: '16px',
-                    padding: '22px',
+                    padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                    boxShadow: isHovered
+                      ? '0 16px 32px -4px rgba(99, 102, 241, 0.25), 0 8px 16px -4px rgba(0,0,0,0.5)'
+                      : '0 8px 24px rgba(0,0,0,0.25)',
+                    transform: isHovered ? 'translateY(-5px)' : 'translateY(0)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
-                    transition: 'transform 0.2s, border-color 0.2s'
+                    cursor: 'default'
                   }}
                 >
-                  {/* Card Header */}
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    {/* Top Tag & Stock */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{
                         fontSize: '11px',
                         fontFamily: 'monospace',
@@ -677,14 +681,16 @@ export default function App() {
                       </span>
                     </div>
 
-                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#f8fafc', margin: '12px 0 6px', lineHeight: '1.4' }}>
+                    {/* Product Name */}
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', margin: '12px 0 6px', lineHeight: '1.4' }}>
                       {p.name}
                     </h3>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
+                    {/* Variant Option Pill */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
                       <span style={{ fontSize: '11px', color: '#94a3b8' }}>Option:</span>
                       <span style={{
-                        fontSize: '12px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         backgroundColor: '#1e293b',
                         color: '#cbd5e1',
@@ -696,26 +702,27 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Price and Trend Display */}
+                    {/* Price & Sparkline Box */}
                     <div style={{
                       backgroundColor: '#0a0f1d',
                       borderRadius: '12px',
-                      padding: '14px 16px',
-                      border: '1px solid #1e293b',
+                      padding: '12px 14px',
+                      border: '1px solid #1e293d',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: '16px'
+                      marginBottom: '14px',
+                      overflow: 'hidden'
                     }}>
-                      <div>
-                        <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Latest Live Price</span>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
-                          <span style={{ fontSize: '24px', fontWeight: '800', color: '#10b981' }}>
+                      <div style={{ minWidth: '100px' }}>
+                        <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block' }}>Latest Price</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+                          <span style={{ fontSize: '22px', fontWeight: '800', color: '#10b981' }}>
                             ${latestPrice}
                           </span>
                           {priceDiff !== 0 && (
                             <span style={{
-                              fontSize: '11px',
+                              fontSize: '10px',
                               fontWeight: '700',
                               color: priceDiff < 0 ? '#10b981' : '#f59e0b'
                             }}>
@@ -725,14 +732,16 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '10px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Price Trend</span>
-                        {renderSparkline(p.price_history)}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <span style={{ fontSize: '9px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Price Trend</span>
+                        <div style={{ width: '110px', height: '30px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {renderSparkline(p.price_history)}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Timestamps */}
-                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '18px', display: 'flex', justifyContent: 'space-between' }}>
+                    {/* Timestamp */}
+                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>Last scraped:</span>
                       <span style={{ color: '#94a3b8', fontFamily: 'monospace' }}>
                         {p.last_checked ? new Date(p.last_checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Pending'}
@@ -740,13 +749,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Card Actions Footer */}
+                  {/* 3 Clean Action Buttons */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '8px',
                     borderTop: '1px solid #1f293d',
-                    paddingTop: '16px'
+                    paddingTop: '14px'
                   }}>
                     <button
                       onClick={() => setSelectedProductModal(p)}
@@ -755,14 +764,14 @@ export default function App() {
                         color: '#cbd5e1',
                         border: '1px solid #334155',
                         borderRadius: '8px',
-                        padding: '8px 10px',
-                        fontSize: '12px',
+                        padding: '8px 6px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         textAlign: 'center'
                       }}
                     >
-                      📜 History
+                      📜 History[cite: 1, 2]
                     </button>
 
                     <button
@@ -773,8 +782,8 @@ export default function App() {
                         color: '#c7d2fe',
                         border: '1px solid #4338ca',
                         borderRadius: '8px',
-                        padding: '8px 10px',
-                        fontSize: '12px',
+                        padding: '8px 6px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         cursor: isScraping ? 'not-allowed' : 'pointer',
                         textAlign: 'center'
@@ -790,8 +799,8 @@ export default function App() {
                         color: '#a7f3d0',
                         border: '1px solid #059669',
                         borderRadius: '8px',
-                        padding: '8px 10px',
-                        fontSize: '12px',
+                        padding: '8px 6px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         textAlign: 'center'
@@ -806,7 +815,7 @@ export default function App() {
           </div>
         )}
 
-        {/* 2. SPREADSHEET TABLE VIEW */}
+        {/* 4. SPREADSHEET TABLE VIEW */}
         {activeTab === 'table' && (
           <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '16px', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
@@ -848,7 +857,7 @@ export default function App() {
                             onClick={() => setSelectedProductModal(p)}
                             style={{ backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid #334155', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer' }}
                           >
-                            History
+                            History[cite: 1, 2]
                           </button>
                           <button
                             onClick={() => handleExportCSV(p)}
@@ -866,16 +875,14 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. AUDIT TRAIL LOGS VIEW */}
+        {/* 5. AUDIT TRAIL VIEW */}
         {activeTab === 'logs' && (
           <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '16px', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Scrape Execution Logs (Audit Trail)</h3>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                  Transparent log of unattended and manual scrape jobs (Captures honest success & failure states)[cite: 1, 2]
-                </p>
-              </div>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Scrape Execution Logs (Audit Trail)[cite: 1, 2]</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                Transparent log of unattended and manual scrape jobs (Captures honest success & failure states)[cite: 1, 2]
+              </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -924,7 +931,53 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL / DRAWER FOR DETAILED PRODUCT HISTORY */}
+        {/* 6. SYSTEM HEALTH & CRON TELEMETRY (PLACED PROPERLY AT THE BOTTOM) */}
+        <section style={{
+          marginTop: '36px',
+          borderTop: '1px solid #1f293d',
+          paddingTop: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <span style={{ fontSize: '14px' }}>⚙️</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              System Health & Automation Telemetry[cite: 1, 2]
+            </span>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '16px'
+          }}>
+            <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Tracked Products</span>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>{products.length}[cite: 1]</div>
+              <span style={{ fontSize: '11px', color: '#10b981' }}>● All Active & Persistent</span>
+            </div>
+
+            <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Scrape Interval</span>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#818cf8', marginTop: '4px' }}>2-Hour</div>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>cron-job.org Ping Active</span>
+            </div>
+
+            <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Backend & Database</span>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#34d399', marginTop: '4px' }}>200 OK</div>
+              <span style={{ fontSize: '11px', color: '#10b981' }}>Supabase PostgreSQL Connected</span>
+            </div>
+
+            <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Audit Execution Count</span>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#f59e0b', marginTop: '4px' }}>
+                {products.reduce((acc, curr) => acc + (curr.logs?.length || 0), 0)} Runs[cite: 1]
+              </div>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Honest fault logging enabled</span>
+            </div>
+          </div>
+        </section>
+
+        {/* MODAL FOR PRODUCT PRICE HISTORY */}
         {selectedProductModal && (
           <div style={{
             position: 'fixed',
@@ -976,7 +1029,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Price Timeline Table */}
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#cbd5e1', margin: 0 }}>
