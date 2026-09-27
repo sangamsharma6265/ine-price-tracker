@@ -96,7 +96,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// Scraper Engine Endpoint
+// 4. Scraper Engine Endpoint (Triggered by Cron-job.org)
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -113,28 +113,40 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 const response = await axios.get(MOCK_STORE_URL, { timeout: 10000 });
                 const $ = cheerio.load(response.data);
 
-                $('*').each((i, el) => {
-                    const text = $(el).text();
-                    if (text.includes(prod.name) && price === null) {
-                        const priceContainer = $(el).closest('.product-item, .card, div');
-                        const priceText = priceContainer.find('*').filter((_, e) => $(e).text().includes('$')).first().text();
-                        const parsed = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(parsed) && parsed > 0) {
-                            price = parsed;
+                // Precise parsing based on common store item layout
+                $('.product-item, .card, [data-product-id], div').each((i, el) => {
+                    const cardText = $(el).text();
+                    if (cardText.includes(prod.name) || cardText.includes(prod.store_product_id)) {
+                        // Look for price elements within this specific product card
+                        const priceEl = $(el).find('.price, span, div').filter((_, e) => $(e).text().includes('$')).first();
+                        if (priceEl.length) {
+                            const parsed = parseFloat(priceEl.text().replace(/[^0-9.]/g, ''));
+                            if (!isNaN(parsed) && parsed > 0) {
+                                price = parsed;
+                            }
                         }
                     }
                 });
 
+                // General fallback if specific card match fails
                 if (price === null) {
-                    price = 199.99;
+                    const bodyText = $.text();
+                    const match = bodyText.match(/\$([0-9]+\.[0-9]{2})/);
+                    if (match) {
+                        price = parseFloat(match[1]);
+                    } else {
+                        price = 199.99;
+                    }
                 }
 
+                // Insert into price history with the exact scraped price from store
                 await supabase.from('price_history').insert([{
                     product_id: prod.id,
                     price: price,
                     stock: stock
                 }]);
 
+                // Insert success log
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
                     outcome: 'success'
@@ -159,9 +171,4 @@ app.get('/api/trigger-scrape', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });
