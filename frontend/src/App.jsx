@@ -3,8 +3,8 @@ import axios from 'axios';
 
 const API_BASE = 'https://ine-price-tracker-backend.onrender.com';
 
-const CHAIR_GREY_IMG = 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?auto=format&fit=crop&w=600&q=80';
-const CHAIR_BLACK_IMG = 'https://images.unsplash.com/photo-1566701829247-1dbe2638beba?auto=format&fit=crop&w=600&q=80';
+const CHAIR_IMG = 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=80';
+const CHAIR_BLACK_IMG = 'https://images.unsplash.com/photo-1589384267710-7a25be112d8a?w=500&auto=format&fit=crop&q=80';
 
 const STORE_CATALOG = [
   {
@@ -19,7 +19,7 @@ const STORE_CATALOG = [
     store_product_id: 'prod_2',
     name: 'Ergonomic Mesh Office Chair',
     category: 'Workplace Furniture',
-    image: CHAIR_GREY_IMG,
+    image: CHAIR_IMG,
     basePrice: 299.50,
     options: ['Mesh Grey', 'Leather Black']
   },
@@ -73,7 +73,7 @@ export default function App() {
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
-      image: CHAIR_GREY_IMG,
+      image: CHAIR_IMG,
       selected_option: 'Mesh Grey',
       latest_price: 299.50,
       latest_stock: 'In Stock',
@@ -114,6 +114,7 @@ export default function App() {
       logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
+        { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
         { price: 149.00, stock: 'In Stock', timestamp: new Date().toISOString() }
       ]
     },
@@ -177,7 +178,7 @@ export default function App() {
       store_product_id: selectedCatalogItem.store_product_id,
       name: selectedCatalogItem.name,
       category: selectedCatalogItem.category || 'General',
-      image: selectedCatalogItem.image || CHAIR_GREY_IMG,
+      image: selectedCatalogItem.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60',
       selected_option: selectedOption,
       latest_price: selectedCatalogItem.basePrice,
       latest_stock: 'In Stock',
@@ -632,7 +633,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* 3. PRODUCT CARDS WITH PROVEN ACTIVE IMAGES */}
+        {/* 3. PRODUCT CARDS WITH HIGH-RES WORKING IMAGES */}
         {activeTab === 'grid' && (
           <div style={{
             display: 'grid',
@@ -668,21 +669,17 @@ export default function App() {
                     cursor: 'default'
                   }}
                 >
-                  {/* Product Preview Image Banner with Fallback */}
+                  {/* Product Preview Image Banner */}
                   <div style={{
                     position: 'relative',
                     width: '100%',
                     height: '140px',
-                    backgroundColor: '#1e293b',
+                    backgroundColor: '#0a0f1d',
                     overflow: 'hidden'
                   }}>
                     <img
                       src={p.image}
                       alt={p.name}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?auto=format&fit=crop&w=600&q=80';
-                      }}
                       style={{
                         width: '100%',
                         height: '100%',
