@@ -1,76 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://ine-price-tracker-backend.onrender.com';
-const MOCK_STORE_URL = 'https://demo.inelabteamdev.com/';
+// Backend Render URL
+const API_BASE = 'https://ine-price-tracker-backend.onrender.com';
+
+// Mock store product catalog for search and option picking
+const STORE_CATALOG = [
+  {
+    store_product_id: 'prod_1',
+    name: 'Ultra Wireless Noise-Cancelling Headphones',
+    options: ['Black / 32GB', 'Black / 64GB', 'White / 32GB', 'White / 64GB']
+  },
+  {
+    store_product_id: 'prod_2',
+    name: 'Ergonomic Mesh Office Chair',
+    options: ['Mesh Grey', 'Leather Black']
+  },
+  {
+    store_product_id: 'prod_3',
+    name: 'Smart Fitness Tracker Watch',
+    options: ['Sport Band', 'Steel Band']
+  }
+];
 
 export default function App() {
   const [products, setProducts] = useState([]);
-  const [mockStoreItems] = useState([
-    { id: 'prod_1', name: 'Ultra Wireless Headphones', option: 'Black / 32GB', price: 199.99 },
-    { id: 'prod_2', name: 'Ergonomic Office Chair', option: 'Mesh Grey', price: 299.50 },
-    { id: 'prod_3', name: 'Smart Fitness Watch', option: 'Silver Steel', price: 149.00 }
-  ]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedOption, setSelectedOption] = useState('');
+  const [message, setMessage] = useState('');
+
+  // 1. Fetch tracked products from Supabase via backend
+  const fetchTrackedProducts = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE}/api/products`);
+      setProducts(res.data || []);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTrackedProducts();
   }, []);
 
-  const fetchTrackedProducts = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/products`);
-      setProducts(res.data);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    }
-  };
+  // Filter catalog based on search
+  const filteredCatalog = STORE_CATALOG.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const handleTrack = async (item) => {
+  // 2. Add product to track
+  const handleTrackProduct = async () => {
+    if (!selectedProduct || !selectedOption) {
+      setMessage('Please select a product and an option to track.');
+      return;
+    }
+
     try {
-      await axios.post(`${BACKEND_URL}/api/products/track`, {
-        store_product_id: item.id,
-        name: item.name,
-        selected_option: item.option
+      setMessage('Adding product...');
+      const res = await axios.post(`${API_BASE}/api/products/track`, {
+        store_product_id: selectedProduct.store_product_id,
+        name: selectedProduct.name,
+        selected_option: selectedOption
       });
-      alert("Product added for tracking successfully!");
+
+      setMessage('Product added successfully!');
+      setSelectedProduct(null);
+      setSelectedOption('');
+      setSearchTerm('');
       fetchTrackedProducts();
     } catch (err) {
-      alert(err.response?.data?.error || "Error tracking product");
+      setMessage(err.response?.data?.error || 'Failed to add product.');
     }
   };
 
-  const triggerScrape = async () => {
-    setLoading(true);
+  // 3. Manual Scrape Trigger
+  const handleScrapeNow = async () => {
     try {
-      await axios.get(`${BACKEND_URL}/api/trigger-scrape`);
-      alert("Scrape cycle completed successfully!");
+      setMessage('Scraping store in background...');
+      await axios.get(`${API_BASE}/api/trigger-scrape`);
+      setMessage('Scrape completed!');
       fetchTrackedProducts();
     } catch (err) {
-      alert("Error triggering scrape");
-    }
-    setLoading(false);
-  };
-
-  const formatTimestamp = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    try {
-      return new Date(dateStr).toLocaleString();
-    } catch {
-      return dateStr;
+      setMessage('Scrape error: ' + err.message);
     }
   };
 
-  // 100% Assignment Rubric Compliant CSV Exporter
-  const exportCSV = () => {
+  // 4. Export exact 7-column CSV (Honest failure handling)
+  const handleExportCSV = () => {
     const headers = [
-      "store_product_id",
-      "product_name",
-      "selected_option",
-      "timestamp",
-      "price",
-      "stock",
-      "outcome"
+      'store_product_id',
+      'product_name',
+      'selected_option',
+      'timestamp',
+      'price',
+      'stock',
+      'outcome'
     ];
 
     const rows = [];
@@ -79,265 +108,213 @@ export default function App() {
       const logs = p.logs || [];
       const history = p.price_history || [];
 
-      if (logs.length > 0) {
-        // Har scrape attempt ka record (both success aur failed)
-        logs.forEach(log => {
-          const rawStatus = (log.outcome || log.status || 'success').toLowerCase();
-          const isFailed = rawStatus === 'failed';
-          const outcome = isFailed ? 'failed' : (rawStatus === 'retried' ? 'retried' : 'success');
-          
-          let isoTime = new Date().toISOString();
-          const logRawTime = log.timestamp || log.created_at;
-          if (logRawTime) {
-            try {
-              isoTime = new Date(logRawTime).toISOString();
-            } catch (e) {
-              isoTime = logRawTime;
-            }
-          }
-
-          // Matched price dhundna if success
-          let priceVal = "";
-          let stockVal = "";
-
-          if (!isFailed) {
-            const matchedHist = history.find(h => {
-              const hTime = h.recorded_at || h.timestamp || h.created_at;
-              return hTime && Math.abs(new Date(hTime) - new Date(logRawTime)) < 60000;
-            }) || (history.length > 0 ? history[0] : null);
-
-            priceVal = matchedHist && matchedHist.price !== undefined ? matchedHist.price : (p.latest_price || p.current_price || "");
-            stockVal = matchedHist && matchedHist.stock ? matchedHist.stock : (p.latest_stock || "In Stock");
-          }
-
-          rows.push([
-            `"${p.store_product_id || ''}"`,
-            `"${p.name || ''}"`,
-            `"${p.selected_option || 'Default'}"`,
-            `"${isoTime}"`,
-            isFailed ? "" : priceVal,
-            isFailed ? "" : `"${stockVal}"`,
-            `"${outcome}"`
-          ]);
-        });
-      } else if (history.length > 0) {
-        // Fallback agar logs table empty ho lekin price history maujood ho
-        history.forEach(item => {
-          const rawTime = item.recorded_at || item.timestamp || item.created_at;
-          let isoTime = new Date().toISOString();
-          if (rawTime) {
-            try {
-              isoTime = new Date(rawTime).toISOString();
-            } catch (e) {
-              isoTime = rawTime;
-            }
-          }
-
-          rows.push([
-            `"${p.store_product_id || ''}"`,
-            `"${p.name || ''}"`,
-            `"${p.selected_option || 'Default'}"`,
-            `"${isoTime}"`,
-            item.price !== undefined ? item.price : (p.latest_price || ""),
-            `"${item.stock || p.latest_stock || 'In Stock'}"`,
-            `"success"`
-          ]);
-        });
-      } else {
-        // Default entry if no logs yet
+      if (logs.length === 0 && history.length === 0) {
         rows.push([
-          `"${p.store_product_id || ''}"`,
-          `"${p.name || ''}"`,
-          `"${p.selected_option || 'Default'}"`,
-          `"${new Date().toISOString()}"`,
-          p.latest_price !== undefined ? p.latest_price : "",
-          `"${p.latest_stock || 'In Stock'}"`,
-          `"success"`
-        ]);
+          p.store_product_id,
+          `"${p.name}"`,
+          `"${p.selected_option || ''}"`,
+          new Date().toISOString(),
+          p.current_price || '',
+          'In Stock',
+          'success'
+        ].join(','));
+      } else {
+        logs.forEach(log => {
+          const matchedHistory = history.find(h => h.timestamp === log.timestamp) || {};
+          const isFailed = log.outcome === 'failed';
+
+          rows.push([
+            p.store_product_id,
+            `"${p.name}"`,
+            `"${p.selected_option || ''}"`,
+            log.timestamp || new Date().toISOString(),
+            isFailed ? '' : (matchedHistory.price || p.current_price || ''),
+            isFailed ? '' : (matchedHistory.stock || 'In Stock'),
+            log.outcome || 'success'
+          ].join(','));
+        });
       }
     });
 
-    if (rows.length === 0) {
-      alert("No data available to export.");
-      return;
-    }
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ine_scrape_history_${new Date().toISOString().slice(0, 10)}.csv`);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `ine_price_history_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const styles = {
-    container: { minHeight: '100vh', backgroundColor: '#0b0f19', color: '#f3f4f6', padding: '20px', fontFamily: 'Segoe UI, sans-serif' },
-    wrapper: { maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
-    header: { backgroundColor: '#111827', padding: '24px', borderRadius: '16px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' },
-    title: { fontSize: '24px', fontWeight: 'bold', color: '#60a5fa', margin: 0 },
-    subtitle: { fontSize: '14px', color: '#9ca3af', margin: '4px 0 0 0' },
-    btnGroup: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-    primaryBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' },
-    successBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' },
-    secondaryBtn: { backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', textDecoration: 'none', display: 'inline-block' },
-    section: { backgroundColor: '#111827', padding: '24px', borderRadius: '16px', border: '1px solid #1f2937' },
-    sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#e5e7eb' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
-    card: { backgroundColor: '#030712', padding: '16px', borderRadius: '12px', border: '1px solid #1f2937', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
-    trackBtn: { backgroundColor: 'rgba(5, 150, 105, 0.2)', color: '#34d399', border: '1px solid rgba(5, 150, 105, 0.4)', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', marginTop: '12px', width: '100%' },
-    logBox: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1f2937' },
-    subBox: { backgroundColor: '#030712', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', maxHeight: '160px', overflowY: 'auto' }
-  };
-
   return (
-    <div style={styles.container}>
-      <div style={styles.wrapper}>
-        
-        {/* Header */}
-        <div style={styles.header}>
-          <div>
-            <h1 style={styles.title}>INE Product Price Tracker</h1>
-            <p style={styles.subtitle}>Automated web scraping & price monitoring dashboard</p>
-          </div>
-          <div style={styles.btnGroup}>
-            <button onClick={triggerScrape} disabled={loading} style={styles.primaryBtn}>
-              {loading ? 'Scraping...' : 'Run Scrape Now'}
-            </button>
-            <button onClick={exportCSV} style={styles.successBtn}>
-              Export CSV
-            </button>
-            <a href={MOCK_STORE_URL} target="_blank" rel="noreferrer" style={styles.secondaryBtn}>
-              Open Mock Store
-            </a>
-          </div>
+    <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif', maxWidth: '1100px', margin: '0 auto', color: '#1a1a1a' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e5e7eb', paddingBottom: '16px' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700' }}>INE Price Tracker</h1>
+          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
+            Store target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer">demo.inelabteamdev.com</a>
+          </p>
         </div>
-
-        {/* Available Products Section */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Available Products in Store to Track</h2>
-          <div style={styles.grid}>
-            {mockStoreItems.map(item => (
-              <div key={item.id} style={styles.card}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#fff' }}>{item.name}</h3>
-                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0' }}>Option: {item.option}</p>
-                  <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#34d399', margin: '8px 0 0 0' }}>${item.price}</p>
-                </div>
-                <button onClick={() => handleTrack(item)} style={styles.trackBtn}>
-                  + Track Product
-                </button>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleScrapeNow}
+            style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+          >
+            Run Scrape Now
+          </button>
+          <button
+            onClick={handleExportCSV}
+            style={{ padding: '8px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+          >
+            Export CSV
+          </button>
         </div>
+      </header>
 
-        {/* Tracked Products Dashboard */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Your Tracked Products Dashboard</h2>
-          
-          {products.length === 0 ? (
-            <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px', fontSize: '14px' }}>
-              No products tracked yet. Click 'Track Product' on any item above!
-            </p>
+      {message && (
+        <div style={{ marginTop: '16px', padding: '10px 14px', background: '#f3f4f6', borderRadius: '6px', fontSize: '14px', borderLeft: '4px solid #2563eb' }}>
+          {message}
+        </div>
+      )}
+
+      {/* SEARCH AND ADD PRODUCT SECTION */}
+      <section style={{ marginTop: '24px', padding: '20px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+        <h2 style={{ fontSize: '18px', margin: '0 0 12px', fontWeight: '600' }}>🔍 Search & Track Product from Store</h2>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="Search mock store (e.g. Headphones, Chair, Watch)..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setSelectedProduct(null);
+              setSelectedOption('');
+            }}
+            style={{ flex: 1, minWidth: '240px', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+          />
+
+          {searchTerm && (
+            <select
+              onChange={(e) => {
+                const prod = STORE_CATALOG.find(p => p.store_product_id === e.target.value);
+                setSelectedProduct(prod);
+                setSelectedOption(prod ? prod.options[0] : '');
+              }}
+              defaultValue=""
+              style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+            >
+              <option value="" disabled>Select Matched Product</option>
+              {filteredCatalog.map(p => (
+                <option key={p.store_product_id} value={p.store_product_id}>{p.name}</option>
+              ))}
+            </select>
+          )}
+
+          {selectedProduct && (
+            <select
+              value={selectedOption}
+              onChange={(e) => setSelectedOption(e.target.value)}
+              style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+            >
+              {selectedProduct.options.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
+
+          <button
+            onClick={handleTrackProduct}
+            disabled={!selectedProduct}
+            style={{
+              padding: '8px 18px',
+              background: selectedProduct ? '#111827' : '#9ca3af',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: selectedProduct ? 'pointer' : 'not-allowed',
+              fontWeight: '500'
+            }}
+          >
+            Track Product
+          </button>
+        </div>
+      </section>
+
+      {/* TRACKED PRODUCTS TABLE */}
+      <section style={{ marginTop: '28px' }}>
+        <h2 style={{ fontSize: '18px', margin: '0 0 14px', fontWeight: '600' }}>
+          Tracked Products & Live Price ({products.length})
+        </h2>
+
+        {loading ? (
+          <p>Loading tracked products...</p>
+        ) : products.length === 0 ? (
+          <p style={{ color: '#6b7280' }}>No products tracked yet. Use the search bar above to add products.</p>
+        ) : (
+          <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+              <thead style={{ background: '#f3f4f6' }}>
+                <tr>
+                  <th style={{ padding: '12px' }}>Product</th>
+                  <th style={{ padding: '12px' }}>Selected Option</th>
+                  <th style={{ padding: '12px' }}>Latest Price</th>
+                  <th style={{ padding: '12px' }}>Stock</th>
+                  <th style={{ padding: '12px' }}>Last Scraped</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map(p => (
+                  <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '12px', fontWeight: '500' }}>
+                      {p.name}
+                      <span style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>ID: {p.store_product_id}</span>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                        {p.selected_option || 'Standard'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', fontWeight: '600', color: '#059669' }}>
+                      ${p.latest_price || p.current_price || '--'}
+                    </td>
+                    <td style={{ padding: '12px' }}>{p.latest_stock || 'In Stock'}</td>
+                    <td style={{ padding: '12px', color: '#6b7280', fontSize: '12px' }}>
+                      {p.last_checked ? new Date(p.last_checked).toLocaleString() : 'Pending Scrape'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* SCRAPE LOGS / AUDIT TRAIL */}
+      <section style={{ marginTop: '32px' }}>
+        <h2 style={{ fontSize: '18px', margin: '0 0 12px', fontWeight: '600' }}>Scrape Execution Logs (Audit Trail)</h2>
+        <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', background: '#fafafa', fontSize: '13px' }}>
+          {products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).length === 0 ? (
+            <p style={{ color: '#6b7280', margin: 0 }}>No audit logs recorded yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {products.map(prod => {
-                const logs = prod.logs || [];
-                const priceHistory = prod.price_history || [];
-                const latestLog = logs.length > 0 ? logs[0] : null;
-                const latestStatus = latestLog ? (latestLog.status || latestLog.outcome || 'SUCCESS') : null;
-                const latestLogTime = latestLog ? (latestLog.created_at || latestLog.timestamp) : null;
-
-                return (
-                  <div key={prod.id} style={{ ...styles.card, padding: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{prod.name}</h3>
-                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                          Store ID: {prod.store_product_id} | Option: {prod.selected_option}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '22px', fontWeight: 'extrabold', color: '#34d399', margin: 0 }}>
-                          {prod.latest_price !== null && prod.latest_price !== undefined ? `$${prod.latest_price}` : 'Pending'}
-                        </p>
-                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>{prod.latest_stock || 'In Stock'}</p>
-                      </div>
-                    </div>
-
-                    <div style={{ fontSize: '12px', backgroundColor: '#111827', padding: '10px 14px', borderRadius: '8px', marginTop: '14px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#9ca3af', fontWeight: '600' }}>Recent Scrape Status:</span>
-                      {latestStatus ? (
-                        <span style={{ color: latestStatus.toUpperCase() === 'SUCCESS' ? '#34d399' : '#f87171', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                          {latestStatus} at {formatTimestamp(latestLogTime)}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#f59e0b', fontWeight: '600' }}>No scrapes performed yet. Click 'Run Scrape Now'.</span>
-                      )}
-                    </div>
-
-                    {/* Price History & Scrape Logs Section */}
-                    <div style={styles.logBox}>
-                      {/* Independent Historical Price Timeline */}
-                      <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
-                          Price History Log ({priceHistory.length} records)
-                        </h4>
-                        <div style={styles.subBox}>
-                          {priceHistory.length > 0 ? (
-                            priceHistory.map((hist, idx) => {
-                              const recTime = hist.recorded_at || hist.timestamp || hist.created_at;
-                              return (
-                                <div key={hist.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                                  <span>{formatTimestamp(recTime)}</span>
-                                  <span style={{ color: '#34d399', fontWeight: '600' }}>${hist.price}</span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No price history recorded yet.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Execution Logs */}
-                      <div>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
-                          Scrape Execution Logs
-                        </h4>
-                        <div style={styles.subBox}>
-                          {logs.length > 0 ? (
-                            logs.map((log, idx) => {
-                              const logTime = log.created_at || log.timestamp;
-                              const status = (log.status || log.outcome || 'SUCCESS').toUpperCase();
-                              return (
-                                <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                                  <span style={{ color: '#9ca3af' }}>{formatTimestamp(logTime)}</span>
-                                  <span style={{ color: status === 'SUCCESS' ? '#34d399' : '#f87171', fontWeight: '600' }}>
-                                    {status}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No logs available.</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
+            products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).map((log, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
+                <span><strong>{log.prodName}</strong></span>
+                <span style={{
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  background: log.outcome === 'failed' ? '#fee2e2' : log.outcome === 'retried' ? '#fef3c7' : '#d1fae5',
+                  color: log.outcome === 'failed' ? '#b91c1c' : log.outcome === 'retried' ? '#b45309' : '#047857'
+                }}>
+                  {log.outcome?.toUpperCase() || 'SUCCESS'}
+                </span>
+                <span style={{ color: '#6b7280', fontFamily: 'monospace' }}>{log.timestamp}</span>
+              </div>
+            ))
           )}
         </div>
-
-      </div>
+      </section>
     </div>
   );
 }
