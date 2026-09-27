@@ -19,7 +19,7 @@ export default function App() {
 
   const fetchTrackedProducts = async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/tracked-products`);
+      const res = await axios.get(`${BACKEND_URL}/api/products`);
       setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
@@ -28,7 +28,7 @@ export default function App() {
 
   const handleTrack = async (item) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/tracked-products`, {
+      await axios.post(`${BACKEND_URL}/api/products/track`, {
         store_product_id: item.id,
         name: item.name,
         selected_option: item.option
@@ -43,7 +43,7 @@ export default function App() {
   const triggerScrape = async () => {
     setLoading(true);
     try {
-      await axios.get(`${BACKEND_URL}/api/scrape/trigger`);
+      await axios.get(`${BACKEND_URL}/api/trigger-scrape`);
       alert("Scrape cycle completed successfully!");
       fetchTrackedProducts();
     } catch (err) {

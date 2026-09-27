@@ -9,24 +9,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Supabase Initialization
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const MOCK_STORE_URL = 'https://demo.inelabteamdev.com/';
 
-// 1. Test Route
 app.get('/', (req, res) => {
-    res.json({ message: "INE Price Tracker Backend is running successfully!" });
+    res.json({ 
+        service: "INE Product Price Tracker Backend API", 
+        status: "online", 
+        health: "/health",
+        endpoints: {
+            trackedProducts: "/api/products",
+            trackProduct: "/api/products/track",
+            scrapeTrigger: "/api/trigger-scrape"
+        }
+    });
 });
 
-// 2. Add Product to Track
+app.get('/health', (req, res) => {
+    res.json({ status: "healthy" });
+});
+
+// Add Product to Track
 app.post('/api/products/track', async (req, res) => {
     try {
         const { store_product_id, name, selected_option } = req.body;
         
-        // Check if already tracked
         const { data: existing } = await supabase
             .from('products')
             .select('*')
@@ -49,7 +59,7 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// 3. Get All Tracked Products with Latest Price & Full History
+// Get All Tracked Products with Full History & Logs
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -61,7 +71,7 @@ app.get('/api/products', async (req, res) => {
                 .select('*')
                 .eq('product_id', prod.id)
                 .order('timestamp', { ascending: false })
-                .limit(10); // Last 10 price records
+                .limit(10);
 
             const { data: logs } = await supabase
                 .from('scrape_logs')
@@ -86,7 +96,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-//// 4. Scraper Engine Endpoint (Triggered by Cron-job.org)
+// Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -103,11 +113,9 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 const response = await axios.get(MOCK_STORE_URL, { timeout: 10000 });
                 const $ = cheerio.load(response.data);
 
-                // Improved resilient parsing
                 $('*').each((i, el) => {
                     const text = $(el).text();
                     if (text.includes(prod.name) && price === null) {
-                        // Find the closest price in parent or siblings
                         const priceContainer = $(el).closest('.product-item, .card, div');
                         const priceText = priceContainer.find('*').filter((_, e) => $(e).text().includes('$')).first().text();
                         const parsed = parseFloat(priceText.replace(/[^0-9.]/g, ''));
@@ -117,19 +125,16 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 });
 
-                // Fallback if direct text search fails: use a fixed default or keep previous price
                 if (price === null) {
-                    price = 199.99; // Default fallback instead of wild random numbers
+                    price = 199.99;
                 }
 
-                // Insert into price history with exact historical price
                 await supabase.from('price_history').insert([{
                     product_id: prod.id,
                     price: price,
                     stock: stock
                 }]);
 
-                // Insert success log
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
                     outcome: 'success'
@@ -140,7 +145,6 @@ app.get('/api/trigger-scrape', async (req, res) => {
             } catch (scrapeErr) {
                 errorMessage = scrapeErr.message;
 
-                // Insert failure log
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
                     outcome: 'failed',
@@ -155,4 +159,9 @@ app.get('/api/trigger-scrape', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
