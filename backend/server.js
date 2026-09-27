@@ -59,7 +59,7 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// Get All Tracked Products with Full History & Logs
+//get All Tracked Products with Full History & Logs
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
