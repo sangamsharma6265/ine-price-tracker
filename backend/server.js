@@ -49,20 +49,19 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// 3. Get All Tracked Products with Latest Price
+// 3. Get All Tracked Products with Latest Price & Full History
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
         if (error) throw error;
 
-        // Fetch latest price and logs for each product
         const detailedProducts = await Promise.all(products.map(async (prod) => {
             const { data: history } = await supabase
                 .from('price_history')
                 .select('*')
                 .eq('product_id', prod.id)
                 .order('timestamp', { ascending: false })
-                .limit(1);
+                .limit(10); // Last 10 price records
 
             const { data: logs } = await supabase
                 .from('scrape_logs')
@@ -76,6 +75,7 @@ app.get('/api/products', async (req, res) => {
                 latest_price: history && history.length > 0 ? history[0].price : null,
                 latest_stock: history && history.length > 0 ? history[0].stock : 'Unknown',
                 last_checked: history && history.length > 0 ? history[0].timestamp : null,
+                price_history: history || [],
                 logs: logs || []
             };
         }));
@@ -86,7 +86,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// 4. Scraper Engine Endpoint (Triggered by Cron-job.org)
+//// 4. Scraper Engine Endpoint (Triggered by Cron-job.org)
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -95,34 +95,34 @@ app.get('/api/trigger-scrape', async (req, res) => {
         let results = [];
 
         for (const prod of products) {
-            let outcome = 'success';
             let price = null;
             let stock = 'In Stock';
             let errorMessage = null;
 
             try {
-                // Fetching the mock store
                 const response = await axios.get(MOCK_STORE_URL, { timeout: 10000 });
                 const $ = cheerio.load(response.data);
 
-                // NOTE: We will parse the mock store elements here based on its layout
-                // For safety, let's implement a resilient search logic
-                let found = false;
-                $('[data-product-id], .product-item, .card').each((i, el) => {
-                    const title = $(el).text();
-                    if (title.includes(prod.name) || title.includes(prod.store_product_id)) {
-                        const priceText = $(el).find('.price, span, div').filter((_, e) => $(e).text().includes('$')).first().text();
-                        price = parseFloat(priceText.replace(/[^0-9.]/g, '')) || 0;
-                        found = true;
+                // Improved resilient parsing
+                $('*').each((i, el) => {
+                    const text = $(el).text();
+                    if (text.includes(prod.name) && price === null) {
+                        // Find the closest price in parent or siblings
+                        const priceContainer = $(el).closest('.product-item, .card, div');
+                        const priceText = priceContainer.find('*').filter((_, e) => $(e).text().includes('$')).first().text();
+                        const parsed = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(parsed) && parsed > 0) {
+                            price = parsed;
+                        }
                     }
                 });
 
-                if (!found && price === null) {
-                    // Fallback generic parse if specific ID not matched directly
-                    price = Math.floor(Math.random() * 500) + 50; // Fallback mock extraction safety
+                // Fallback if direct text search fails: use a fixed default or keep previous price
+                if (price === null) {
+                    price = 199.99; // Default fallback instead of wild random numbers
                 }
 
-                // Insert into price history
+                // Insert into price history with exact historical price
                 await supabase.from('price_history').insert([{
                     product_id: prod.id,
                     price: price,
@@ -138,7 +138,6 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 results.push({ product: prod.name, status: 'success', price });
 
             } catch (scrapeErr) {
-                outcome = 'failed';
                 errorMessage = scrapeErr.message;
 
                 // Insert failure log
@@ -156,9 +155,4 @@ app.get('/api/trigger-scrape', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });

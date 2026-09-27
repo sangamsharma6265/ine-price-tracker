@@ -55,9 +55,9 @@ export default function App() {
   const exportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,Product Name,Store ID,Price,Stock,Timestamp\n";
     products.forEach(p => {
-      if (p.logs && p.logs.length > 0) {
-        p.logs.forEach(l => {
-          csvContent += `"${p.name}","${p.store_product_id}",${p.latest_price || 0},"${p.latest_stock}","${l.timestamp}"\n`;
+      if (p.price_history && p.price_history.length > 0) {
+        p.price_history.forEach(l => {
+          csvContent += `"${p.name}","${p.store_product_id}",${l.price},"${l.stock || 'In Stock'}","${l.timestamp}"\n`;
         });
       }
     });
@@ -176,11 +176,11 @@ export default function App() {
                         Price History Log
                       </h4>
                       <div style={styles.subBox}>
-                        {prod.logs && prod.logs.length > 0 ? (
-                          prod.logs.map((log, idx) => (
+                        {prod.price_history && prod.price_history.length > 0 ? (
+                          prod.price_history.map((hist, idx) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                              <span>{new Date(log.timestamp).toLocaleString()}</span>
-                              <span style={{ color: '#34d399', fontWeight: '600' }}>${prod.latest_price}</span>
+                              <span>{new Date(hist.timestamp).toLocaleString()}</span>
+                              <span style={{ color: '#34d399', fontWeight: '600' }}>${hist.price}</span>
                             </div>
                           ))
                         ) : (
