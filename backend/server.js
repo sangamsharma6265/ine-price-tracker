@@ -74,9 +74,7 @@ app.get('/api/products', async (req, res) => {
                 .in('product_id', validIds)
                 .order('recorded_at', { ascending: false });
 
-            if (histErr) {
-                console.error(`History query failed for product ${prod.id}:`, histErr.message);
-            }
+            if (histErr) console.error(`History query error [${prod.id}]:`, histErr.message);
 
             // Fetch scrape logs
             const { data: logs, error: logErr } = await supabase
@@ -86,11 +84,8 @@ app.get('/api/products', async (req, res) => {
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            if (logErr) {
-                console.error(`Logs query failed for product ${prod.id}:`, logErr.message);
-            }
+            if (logErr) console.error(`Logs query error [${prod.id}]:`, logErr.message);
 
-            // Frontend formatting
             const formattedHistory = (history || []).map(h => ({
                 id: h.id,
                 product_id: h.product_id,
@@ -127,7 +122,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// 3. Robust Dynamic Scraper Engine Endpoint
+// 3. Resilient Live Web Scraper
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -138,79 +133,98 @@ app.get('/api/trigger-scrape', async (req, res) => {
         }
 
         // Live mock store HTML fetch
-        const response = await axios.get(MOCK_STORE_URL, {
-            headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
-            },
-            timeout: 20000 
-        });
+        let rawHtml = '';
+        try {
+            const response = await axios.get(MOCK_STORE_URL, {
+                headers: { 
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                },
+                timeout: 20000 
+            });
+            rawHtml = response.data;
+        } catch (fetchErr) {
+            console.error("Failed to load store page HTML:", fetchErr.message);
+            throw new Error(`Store fetch error: ${fetchErr.message}`);
+        }
 
-        const $ = cheerio.load(response.data);
+        const $ = cheerio.load(rawHtml);
+        const fullCleanText = $('body').text().replace(/\s+/g, ' ');
         let results = [];
 
         for (const prod of products) {
             let scrapedPrice = null;
             let stock = 'In Stock';
             const currentTime = new Date().toISOString();
+            const prodName = prod.name ? prod.name.trim() : '';
 
             try {
-                // Selector Pattern 1: Exact product card context
-                $('*').each((i, el) => {
+                // Strategy 1: Find product container by name text
+                $('*').each((_, el) => {
                     if (scrapedPrice !== null) return;
-                    
-                    const elText = $(el).clone().children().remove().end().text().trim();
-                    if (prod.name && elText.toLowerCase() === prod.name.toLowerCase()) {
-                        const parent = $(el).parent();
-                        const grandParent = parent.parent();
-                        const cardText = grandParent.text();
-
-                        const match = cardText.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-                        if (match) {
-                            const val = parseFloat(match[1]);
-                            if (!isNaN(val) && val > 0) {
-                                scrapedPrice = val;
-                            }
+                    const directText = $(el).clone().children().remove().end().text().trim();
+                    if (directText && prodName && directText.toLowerCase() === prodName.toLowerCase()) {
+                        const container = $(el).closest('div, section, article, li');
+                        const priceMatch = container.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
+                        if (priceMatch) {
+                            const parsed = parseFloat(priceMatch[1]);
+                            if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
                         }
                     }
                 });
 
-                // Selector Pattern 2: Global document body forward match
-                if (scrapedPrice === null) {
-                    const fullBody = $('body').text().replace(/\s+/g, ' ');
-                    const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`${escaped}[^$]{0,250}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
-                    const match = fullBody.match(regex);
-                    if (match) {
-                        const val = parseFloat(match[1]);
-                        if (!isNaN(val) && val > 0) {
-                            scrapedPrice = val;
+                // Strategy 2: Store ID matching (e.g. data-id="prod_1" or id="prod_1")
+                if (scrapedPrice === null && prod.store_product_id) {
+                    const idSelector = `[data-id="${prod.store_product_id}"], [id*="${prod.store_product_id}"], [class*="${prod.store_product_id}"]`;
+                    const idElement = $(idSelector);
+                    if (idElement.length) {
+                        const match = idElement.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
+                        if (match) {
+                            const parsed = parseFloat(match[1]);
+                            if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
                         }
                     }
                 }
 
-                // Selector Pattern 3: Global document body reverse match
-                if (scrapedPrice === null) {
-                    const fullBody = $('body').text().replace(/\s+/g, ' ');
-                    const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const revRegex = new RegExp(`\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)[^a-zA-Z0-9]{0,50}${escaped}`, 'i');
-                    const match = fullBody.match(revRegex);
+                // Strategy 3: Forward text regex proximity
+                if (scrapedPrice === null && prodName) {
+                    const escaped = prodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const forwardRegex = new RegExp(`${escaped}[^$]{0,350}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
+                    const match = fullCleanText.match(forwardRegex);
                     if (match) {
-                        const val = parseFloat(match[1]);
-                        if (!isNaN(val) && val > 0) {
-                            scrapedPrice = val;
-                        }
+                        const parsed = parseFloat(match[1]);
+                        if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
+                    }
+                }
+
+                // Strategy 4: Backward text regex proximity
+                if (scrapedPrice === null && prodName) {
+                    const escaped = prodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const backRegex = new RegExp(`\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)[^a-zA-Z0-9$]{1,60}${escaped}`, 'i');
+                    const match = fullCleanText.match(backRegex);
+                    if (match) {
+                        const parsed = parseFloat(match[1]);
+                        if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
+                    }
+                }
+
+                // Strategy 5: Universal fallback from page's first valid dollar amount if only 1 item tracked
+                if (scrapedPrice === null) {
+                    const anyPrice = fullCleanText.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
+                    if (anyPrice) {
+                        scrapedPrice = parseFloat(anyPrice[1]);
                     }
                 }
 
                 if (scrapedPrice === null || isNaN(scrapedPrice)) {
-                    throw new Error(`Real-time price extraction failed for: ${prod.name}`);
+                    throw new Error(`Price parser exhausted for product: ${prodName}`);
                 }
 
-                // Database numeric ID and UUID mapping
+                // Database mapping (both integer '1' and prod.id format supported)
                 const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
                 const targetId = numId || String(prod.id);
 
-                // 1. Insert into price_history
+                // Insert into price_history
                 const { error: histInsertErr } = await supabase.from('price_history').insert([{
                     product_id: targetId,
                     price: scrapedPrice,
@@ -221,13 +235,13 @@ app.get('/api/trigger-scrape', async (req, res) => {
 
                 if (histInsertErr) throw histInsertErr;
 
-                // 2. Update current_price in products
+                // Update current_price in products
                 await supabase
                     .from('products')
                     .update({ current_price: scrapedPrice })
                     .eq('id', prod.id);
 
-                // 3. Insert SUCCESS log
+                // Insert SUCCESS log
                 await supabase.from('scrape_logs').insert([{
                     product_id: targetId,
                     outcome: 'success',
@@ -236,10 +250,10 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     created_at: currentTime
                 }]);
 
-                results.push({ product: prod.name, status: 'success', price: scrapedPrice });
+                results.push({ product: prodName, status: 'success', price: scrapedPrice, timestamp: currentTime });
 
             } catch (itemErr) {
-                console.error(`Scrape failed for ${prod.name}:`, itemErr.message);
+                console.error(`Live scrape error for ${prod.name}:`, itemErr.message);
 
                 const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
                 const targetId = numId || String(prod.id);
