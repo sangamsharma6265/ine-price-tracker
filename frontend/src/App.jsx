@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { RefreshCw, Download, ExternalLink, Plus } from 'lucide-react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://ine-price-tracker-backend.onrender.com';
 const MOCK_STORE_URL = 'https://demo.inelabteamdev.com/';
@@ -71,60 +70,61 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  const styles = {
+    container: { minHeight: '100vh', backgroundColor: '#0b0f19', color: '#f3f4f6', padding: '20px', fontFamily: 'Segoe UI, sans-serif' },
+    wrapper: { maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
+    header: { backgroundColor: '#111827', padding: '24px', borderRadius: '16px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' },
+    title: { fontSize: '24px', fontWeight: 'bold', color: '#60a5fa', margin: 0 },
+    subtitle: { fontSize: '14px', color: '#9ca3af', margin: '4px 0 0 0' },
+    btnGroup: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    primaryBtn: { backgroundColor: '#2563eb', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' },
+    successBtn: { backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' },
+    secondaryBtn: { backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', textDecoration: 'none', display: 'inline-block' },
+    section: { backgroundColor: '#111827', padding: '24px', borderRadius: '16px', border: '1px solid #1f2937' },
+    sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#e5e7eb' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' },
+    card: { backgroundColor: '#030712', padding: '16px', borderRadius: '12px', border: '1px solid #1f2937', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
+    trackBtn: { backgroundColor: 'rgba(5, 150, 105, 0.2)', color: '#34d399', border: '1px solid rgba(5, 150, 105, 0.4)', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', marginTop: '12px', width: '100%' },
+    logBox: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1f2937' },
+    subBox: { backgroundColor: '#030712', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', maxHeight: '150px', overflowY: 'auto' }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div style={styles.container}>
+      <div style={styles.wrapper}>
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-2xl gap-4">
+        <div style={styles.header}>
           <div>
-            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-              INE Product Price Tracker
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">Automated web scraping & price monitoring dashboard</p>
+            <h1 style={styles.title}>INE Product Price Tracker</h1>
+            <p style={styles.subtitle}>Automated web scraping & price monitoring dashboard</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={triggerScrape}
-              disabled={loading}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium transition shadow-lg disabled:opacity-50 text-sm"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <div style={styles.btnGroup}>
+            <button onClick={triggerScrape} disabled={loading} style={styles.primaryBtn}>
               {loading ? 'Scraping...' : 'Run Scrape Now'}
             </button>
-            <button 
-              onClick={exportCSV}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-medium transition shadow-lg text-sm"
-            >
-              <Download className="w-4 h-4" /> Export CSV
+            <button onClick={exportCSV} style={styles.successBtn}>
+              Export CSV
             </button>
-            <a 
-              href={MOCK_STORE_URL} 
-              target="_blank" 
-              rel="noreferrer"
-              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2.5 rounded-xl font-medium transition border border-gray-700 text-sm"
-            >
-              <ExternalLink className="w-4 h-4" /> Open Mock Store
+            <a href={MOCK_STORE_URL} target="_blank" rel="noreferrer" style={styles.secondaryBtn}>
+              Open Mock Store
             </a>
           </div>
         </div>
 
         {/* Available Products Section */}
-        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-2xl">
-          <h2 className="text-lg font-bold mb-4 text-gray-200">Available Products in Store to Track</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Available Products in Store to Track</h2>
+          <div style={styles.grid}>
             {mockStoreItems.map(item => (
-              <div key={item.id} className="bg-gray-950 p-5 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-gray-700 transition">
+              <div key={item.id} style={styles.card}>
                 <div>
-                  <h3 className="font-semibold text-gray-100">{item.name}</h3>
-                  <p className="text-xs text-gray-400 mt-1">Option: {item.option}</p>
-                  <p className="text-emerald-400 font-bold text-lg mt-2">${item.price}</p>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#fff' }}>{item.name}</h3>
+                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0' }}>Option: {item.option}</p>
+                  <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#34d399', margin: '8px 0 0 0' }}>${item.price}</p>
                 </div>
-                <button
-                  onClick={() => handleTrack(item)}
-                  className="mt-5 flex items-center justify-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 py-2 rounded-lg transition text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4" /> Track Product
+                <button onClick={() => handleTrack(item)} style={styles.trackBtn}>
+                  + Track Product
                 </button>
               </div>
             ))}
@@ -132,71 +132,79 @@ export default function App() {
         </div>
 
         {/* Tracked Products Dashboard */}
-        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-2xl space-y-6">
-          <h2 className="text-lg font-bold text-gray-200">Your Tracked Products Dashboard</h2>
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Your Tracked Products Dashboard</h2>
           
           {products.length === 0 ? (
-            <p className="text-gray-500 text-center py-8 text-sm">No products tracked yet. Click 'Track Product' on any item above!</p>
+            <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px', fontSize: '14px' }}>
+              No products tracked yet. Click 'Track Product' on any item above!
+            </p>
           ) : (
-            <div className="space-y-6">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {products.map(prod => (
-                <div key={prod.id} className="bg-gray-950 p-6 rounded-2xl border border-gray-800 shadow-inner space-y-5">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div key={prod.id} style={{ ...styles.card, padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-100">{prod.name}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">Store ID: <span className="text-gray-300">{prod.store_product_id}</span> | Option: <span className="text-gray-300">{prod.selected_option}</span></p>
+                      <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{prod.name}</h3>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                        Store ID: {prod.store_product_id} | Option: {prod.selected_option}
+                      </p>
                     </div>
-                    <div className="text-left md:text-right">
-                      <p className="text-2xl font-extrabold text-emerald-400">
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '22px', fontWeight: 'extrabold', color: '#34d399', margin: 0 }}>
                         {prod.latest_price !== null ? `$${prod.latest_price}` : 'Pending'}
                       </p>
-                      <p className="text-xs font-medium text-gray-400">{prod.latest_stock || 'Unknown'}</p>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>{prod.latest_stock || 'Unknown'}</p>
                     </div>
                   </div>
 
-                  <div className="text-xs bg-gray-900 p-3 rounded-xl border border-gray-800 text-gray-300 flex items-center justify-between">
-                    <span className="font-semibold text-gray-400">Recent Scrape Status:</span>
+                  <div style={{ fontSize: '12px', backgroundColor: '#111827', padding: '10px 14px', borderRadius: '8px', marginTop: '14px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af', fontWeight: '600' }}>Recent Scrape Status:</span>
                     {prod.logs && prod.logs.length > 0 ? (
-                      <span className={prod.logs[0].outcome === 'success' ? 'text-emerald-400 font-bold uppercase tracking-wide' : 'text-rose-400 font-bold uppercase tracking-wide'}>
+                      <span style={{ color: prod.logs[0].outcome === 'success' ? '#34d399' : '#f87171', fontWeight: 'bold', textTransform: 'uppercase' }}>
                         {prod.logs[0].outcome} at {new Date(prod.logs[0].timestamp).toLocaleString()}
                       </span>
                     ) : (
-                      <span className="text-yellow-500 font-medium">No scrapes performed yet. Click 'Run Scrape Now'.</span>
+                      <span style={{ color: '#f59e0b', fontWeight: '600' }}>No scrapes performed yet. Click 'Run Scrape Now'.</span>
                     )}
                   </div>
 
                   {/* Price History & Scrape Logs Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-gray-800">
-                    <div className="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
-                      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Price History Log</h4>
-                      <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
+                  <div style={styles.logBox}>
+                    <div>
+                      <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Price History Log
+                      </h4>
+                      <div style={styles.subBox}>
                         {prod.logs && prod.logs.length > 0 ? (
                           prod.logs.map((log, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-xs text-gray-300 border-b border-gray-800/80 pb-2">
-                              <span className="text-gray-400">{new Date(log.timestamp).toLocaleString()}</span>
-                              <span className="text-emerald-400 font-semibold">{prod.latest_price ? `$${prod.latest_price}` : 'N/A'}</span>
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
+                              <span>{new Date(log.timestamp).toLocaleString()}</span>
+                              <span style={{ color: '#34d399', fontWeight: '600' }}>${prod.latest_price}</span>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-gray-500">No history recorded yet.</p>
+                          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No history recorded yet.</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
-                      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Recent Scrape Logs (Outcome & Timestamp)</h4>
-                      <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
+                    <div>
+                      <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Recent Scrape Logs (Outcome & Timestamp)
+                      </h4>
+                      <div style={styles.subBox}>
                         {prod.logs && prod.logs.length > 0 ? (
                           prod.logs.map((log, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-800/80 pb-2">
-                              <span className="text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                              <span className={log.outcome === 'success' ? 'text-emerald-400 font-semibold uppercase' : 'text-rose-400 font-semibold uppercase'}>
-                                {log.outcome} {log.error_message ? `(${log.error_message})` : ''}
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
+                              <span style={{ color: '#9ca3af' }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                              <span style={{ color: log.outcome === 'success' ? '#34d399' : '#f87171', fontWeight: '600', textTransform: 'uppercase' }}>
+                                {log.outcome}
                               </span>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-gray-500">No logs available.</p>
+                          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No logs available.</p>
                         )}
                       </div>
                     </div>
