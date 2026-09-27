@@ -3,6 +3,9 @@ import axios from 'axios';
 
 const API_BASE = 'https://ine-price-tracker-backend.onrender.com';
 
+const CHAIR_IMG = 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=80';
+const CHAIR_BLACK_IMG = 'https://images.unsplash.com/photo-1589384267710-7a25be112d8a?w=500&auto=format&fit=crop&q=80';
+
 const STORE_CATALOG = [
   {
     store_product_id: 'prod_1',
@@ -16,7 +19,7 @@ const STORE_CATALOG = [
     store_product_id: 'prod_2',
     name: 'Ergonomic Mesh Office Chair',
     category: 'Workplace Furniture',
-    image: 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?w=500&auto=format&fit=crop&q=60',
+    image: CHAIR_IMG,
     basePrice: 299.50,
     options: ['Mesh Grey', 'Leather Black']
   },
@@ -62,7 +65,7 @@ export default function App() {
       logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 239.99, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
-        { price: 229.99, stock: 'In Stock', timestamp: new Date().toISOString() }
+        { price: 229.99, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() }
       ]
     },
     {
@@ -70,7 +73,7 @@ export default function App() {
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
-      image: 'https://images.unsplash.com/photo-1580481077195-c3a822055bed?w=500&auto=format&fit=crop&q=60',
+      image: CHAIR_IMG,
       selected_option: 'Mesh Grey',
       latest_price: 299.50,
       latest_stock: 'In Stock',
@@ -87,7 +90,7 @@ export default function App() {
       store_product_id: 'prod_2',
       name: 'Ergonomic Mesh Office Chair',
       category: 'Workplace Furniture',
-      image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?w=500&auto=format&fit=crop&q=60',
+      image: CHAIR_BLACK_IMG,
       selected_option: 'Leather Black',
       latest_price: 349.00,
       latest_stock: 'In Stock',
@@ -111,6 +114,7 @@ export default function App() {
       logs: [{ outcome: 'success', timestamp: new Date().toISOString() }],
       price_history: [
         { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 14400000).toISOString() },
+        { price: 149.00, stock: 'In Stock', timestamp: new Date(Date.now() - 7200000).toISOString() },
         { price: 149.00, stock: 'In Stock', timestamp: new Date().toISOString() }
       ]
     },
@@ -366,7 +370,7 @@ export default function App() {
                 </span>
               </div>
               <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                Target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: '500' }}>demo.inelabteamdev.com</a>[cite: 8]
+                Target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: '500' }}>demo.inelabteamdev.com</a>
               </p>
             </div>
           </div>
@@ -416,7 +420,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* 2. SEARCH & ADD PRODUCT (DIRECTLY BELOW HEADER) */}
+        {/* 2. SEARCH & ADD PRODUCT */}
         <section style={{
           marginTop: '18px',
           backgroundColor: '#111827',
@@ -428,7 +432,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <span style={{ fontSize: '16px' }}>🔍</span>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
-              Search & Track Product from Store[cite: 1, 2]
+              Search & Track Product from Store
             </h2>
             <span style={{ fontSize: '12px', color: '#64748b' }}>— Search mock store catalog and pick variant option to monitor</span>
           </div>
@@ -569,7 +573,7 @@ export default function App() {
                 gap: '6px'
               }}
             >
-              <span>🗂️</span> Cards View ({products.length})[cite: 1]
+              <span>🗂️</span> Cards View ({products.length})
             </button>
             <button
               onClick={() => setActiveTab('table')}
@@ -629,7 +633,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* 3. PRODUCT CARDS WITH PRODUCT IMAGES & HOVER */}
+        {/* 3. PRODUCT CARDS WITH HIGH-RES WORKING IMAGES */}
         {activeTab === 'grid' && (
           <div style={{
             display: 'grid',
@@ -680,7 +684,7 @@ export default function App() {
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
-                        opacity: 0.85,
+                        opacity: 0.9,
                         transform: isHovered ? 'scale(1.05)' : 'scale(1)',
                         transition: 'transform 0.4s ease'
                       }}
@@ -801,7 +805,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 3 Clean Action Buttons */}
+                  {/* 3 Action Buttons */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr 1fr',
@@ -824,7 +828,7 @@ export default function App() {
                         textAlign: 'center'
                       }}
                     >
-                      📜 History[cite: 1, 2]
+                      📜 History
                     </button>
 
                     <button
@@ -842,7 +846,7 @@ export default function App() {
                         textAlign: 'center'
                       }}
                     >
-                      ⚡ Scrape[cite: 1]
+                      ⚡ Scrape
                     </button>
 
                     <button
@@ -859,7 +863,7 @@ export default function App() {
                         textAlign: 'center'
                       }}
                     >
-                      📥 CSV[cite: 1]
+                      📥 CSV
                     </button>
                   </div>
                 </div>
@@ -910,13 +914,13 @@ export default function App() {
                             onClick={() => setSelectedProductModal(p)}
                             style={{ backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid #334155', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer' }}
                           >
-                            History[cite: 1, 2]
+                            History
                           </button>
                           <button
                             onClick={() => handleExportCSV(p)}
                             style={{ backgroundColor: '#064e3b', color: '#a7f3d0', border: '1px solid #059669', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer' }}
                           >
-                            CSV[cite: 1]
+                            CSV
                           </button>
                         </div>
                       </td>
@@ -932,9 +936,9 @@ export default function App() {
         {activeTab === 'logs' && (
           <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '16px', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Scrape Execution Logs (Audit Trail)[cite: 1, 2]</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Scrape Execution Logs (Audit Trail)</h3>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                Transparent log of unattended and manual scrape jobs (Captures honest success & failure states)[cite: 1, 2]
+                Transparent log of unattended and manual scrape jobs (Captures honest success & failure states)
               </p>
             </div>
 
@@ -993,7 +997,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <span style={{ fontSize: '14px' }}>⚙️</span>
             <span style={{ fontSize: '13px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              System Health & Automation Telemetry[cite: 1, 2]
+              System Health & Automation Telemetry
             </span>
           </div>
 
@@ -1004,7 +1008,7 @@ export default function App() {
           }}>
             <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Tracked Products</span>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>{products.length}[cite: 1]</div>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#ffffff', marginTop: '4px' }}>{products.length}</div>
               <span style={{ fontSize: '11px', color: '#10b981' }}>● All Active & Persistent</span>
             </div>
 
@@ -1023,14 +1027,14 @@ export default function App() {
             <div style={{ backgroundColor: '#111827', border: '1px solid #1f293d', borderRadius: '14px', padding: '14px 18px' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>Audit Execution Count</span>
               <div style={{ fontSize: '24px', fontWeight: '800', color: '#f59e0b', marginTop: '4px' }}>
-                {products.reduce((acc, curr) => acc + (curr.logs?.length || 0), 0)} Runs[cite: 1]
+                {products.reduce((acc, curr) => acc + (curr.logs?.length || 0), 0)} Runs
               </div>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>Honest fault logging enabled</span>
             </div>
           </div>
         </section>
 
-        {/* 7. COMPANY OVERVIEW & ABOUT THE PLATFORM (PAGE RICH FOOTER) */}
+        {/* 7. COMPANY OVERVIEW & ABOUT THE PLATFORM */}
         <footer style={{
           marginTop: '48px',
           backgroundColor: '#111827',
@@ -1050,24 +1054,24 @@ export default function App() {
                 <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff', margin: 0 }}>INE Price Tracker Enterprise</h4>
               </div>
               <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
-                High-frequency price auditing and variant inventory tracker built for mock e-commerce ecosystems[cite: 8]. Provides continuous DOM parsing, fault-tolerant retry loops, and cold-start resilient persistence on Supabase[cite: 7, 8].
+                High-frequency price auditing and variant inventory tracker built for mock e-commerce ecosystems. Provides continuous DOM parsing, fault-tolerant retry loops, and cold-start resilient persistence on Supabase.
               </p>
             </div>
 
             <div>
               <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#e2e8f0', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Core Capabilities</h4>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.8' }}>
-                <li>Headless browser scraping with Playwright & Cheerio[cite: 10]</li>
-                <li>Real variant multiplier mapping & pricing matrix[cite: 7, 8]</li>
-                <li>Strict 7-Column CSV export standard compliance[cite: 7]</li>
-                <li>External Webhook Cron Ping (2-Hour Interval)[cite: 7, 9]</li>
+                <li>Headless browser scraping with Playwright & Cheerio</li>
+                <li>Real variant multiplier mapping & pricing matrix</li>
+                <li>Strict 7-Column CSV export standard compliance</li>
+                <li>External Webhook Cron Ping (2-Hour Interval)</li>
               </ul>
             </div>
 
             <div>
               <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#e2e8f0', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Architecture & Stack</h4>
               <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: '0 0 10px 0' }}>
-                Deployed on <strong>Vercel</strong> (Vite React Frontend) and <strong>Render</strong> (Node.js API) with persistent PostgreSQL via <strong>Supabase</strong>[cite: 7, 10].
+                Deployed on <strong>Vercel</strong> (Vite React Frontend) and <strong>Render</strong> (Node.js API) with persistent PostgreSQL via <strong>Supabase</strong>.
               </p>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#1e293b', fontSize: '11px', color: '#818cf8', fontWeight: '600' }}>React 18</span>
@@ -1091,7 +1095,7 @@ export default function App() {
             color: '#64748b'
           }}>
             <span>© 2026 INE Product Price Tracker Project. All rights reserved.</span>
-            <span>Target Endpoint: <code style={{ color: '#818cf8' }}>https://demo.inelabteamdev.com/</code>[cite: 8]</span>
+            <span>Target Endpoint: <code style={{ color: '#818cf8' }}>https://demo.inelabteamdev.com/</code></span>
           </div>
         </footer>
 
@@ -1150,7 +1154,7 @@ export default function App() {
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#cbd5e1', margin: 0 }}>
-                    Price & Stock Evolution Log[cite: 1, 2]
+                    Price & Stock Evolution Log
                   </h4>
                   <button
                     onClick={() => handleExportCSV(selectedProductModal)}
@@ -1165,7 +1169,7 @@ export default function App() {
                       cursor: 'pointer'
                     }}
                   >
-                    📥 Export CSV[cite: 1]
+                    📥 Export CSV
                   </button>
                 </div>
 
