@@ -96,7 +96,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// Scraper Engine Endpoint - Fixed Stable Pricing & Logging
+// Pure Real-Time Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -104,43 +104,45 @@ app.get('/api/trigger-scrape', async (req, res) => {
 
         let results = [];
 
-        // Attempt to fetch live store page
-        let $;
-        try {
-            const response = await axios.get(MOCK_STORE_URL, { timeout: 10000 });
-            $ = cheerio.load(response.data);
-        } catch (e) {
-            $ = null;
-        }
+        // Fetch live store HTML once
+        const response = await axios.get(MOCK_STORE_URL, { timeout: 10000 });
+        const $ = cheerio.load(response.data);
 
         for (const prod of products) {
             let price = null;
             let stock = 'In Stock';
 
             try {
-                if ($) {
-                    $('*').each((i, el) => {
-                        const text = $(el).text();
-                        if (price === null && (text.includes(prod.name) || text.includes(prod.store_product_id))) {
-                            const container = $(el).closest('.product, .item, .card, div');
-                            const priceText = container.find('*').filter((_, e) => $(e).text().includes('$')).first().text();
-                            const parsed = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                // Real-time parsing from mock store DOM elements
+                $('.product, .product-item, .card, div').each((i, el) => {
+                    const text = $(el).text();
+                    if (price === null && (text.includes(prod.name) || text.includes(prod.store_product_id))) {
+                        // Extract price matching dollar sign inside this product container
+                        const priceElement = $(el).find('*').filter((_, e) => $(e).text().trim().startsWith('$')).first();
+                        if (priceElement.length) {
+                            const parsed = parseFloat(priceElement.text().replace(/[^0-9.]/g, ''));
                             if (!isNaN(parsed) && parsed > 0) {
                                 price = parsed;
                             }
                         }
-                    });
+                    }
+                });
+
+                // General fallback search if specific card search didn't isolate it
+                if (price === null) {
+                    const allText = $.text();
+                    const regex = /\$([0-9]+\.[0-9]{2})/g;
+                    let match = regex.exec(allText);
+                    if (match) {
+                        price = parseFloat(match[1]);
+                    }
                 }
 
-                // Fallback to strict product-specific default prices so it never fluctuates wildly
-                if (price === null || isNaN(price)) {
-                    if (prod.store_product_id === 'prod_1') price = 199.99;
-                    else if (prod.store_product_id === 'prod_2') price = 299.50;
-                    else if (prod.store_product_id === 'prod_3') price = 149.00;
-                    else price = 199.99;
+                if (price === null) {
+                    throw new Error("Could not parse real-time price from store page");
                 }
 
-                // Insert a distinct row into price_history with current timestamp
+                // Insert independent historical row into database
                 const { error: insertError } = await supabase.from('price_history').insert([{
                     product_id: prod.id,
                     price: price,
@@ -150,7 +152,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
 
                 if (insertError) throw insertError;
 
-                // Insert success log
+                // Log success
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
                     outcome: 'success',
@@ -171,7 +173,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
             }
         }
 
-        res.json({ message: "Scrape cycle completed successfully", results });
+        res.json({ message: "Real-time scrape cycle completed", results });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
