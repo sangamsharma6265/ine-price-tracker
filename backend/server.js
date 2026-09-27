@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: "healthy" }));
 
-// Add Product to Track
+// 1. Add Product to Track
 app.post('/api/products/track', async (req, res) => {
     try {
         const { store_product_id, name, selected_option } = req.body;
@@ -38,11 +38,7 @@ app.post('/api/products/track', async (req, res) => {
 
         const { data, error } = await supabase
             .from('products')
-            .insert([{ 
-                store_product_id, 
-                name, 
-                selected_option 
-            }])
+            .insert([{ store_product_id, name, selected_option }])
             .select();
 
         if (error) throw error;
@@ -53,31 +49,30 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// Get All Tracked Products with Full History & Logs
+// 2. Get All Tracked Products with Guaranteed price_history Array
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
         if (error) throw error;
 
         const detailedProducts = await Promise.all(products.map(async (prod) => {
-            // Har format ki ID collect karo: UUID, 'prod_1', aur direct integer '1'
-            const numericIdOnly = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
-            
+            const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
             const validIds = [
                 String(prod.id),
                 prod.store_product_id ? String(prod.store_product_id) : null,
-                numericIdOnly ? String(numericIdOnly) : null
+                numId ? String(numId) : null
             ].filter(Boolean);
 
-            // Fetch price history matching any of those IDs
+            // Fetch price history
             const { data: history, error: histErr } = await supabase
                 .from('price_history')
                 .select('*')
                 .in('product_id', validIds)
-                .order('recorded_at', { ascending: false })
-                .limit(50);
+                .order('recorded_at', { ascending: false });
 
-            if (histErr) console.error("History fetch error:", histErr);
+            if (histErr) {
+                console.error(`History query failed for product ${prod.id}:`, histErr.message);
+            }
 
             // Fetch scrape logs
             const { data: logs, error: logErr } = await supabase
@@ -87,37 +82,49 @@ app.get('/api/products', async (req, res) => {
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            if (logErr) console.error("Logs fetch error:", logErr);
+            if (logErr) {
+                console.error(`Logs query failed for product ${prod.id}:`, logErr.message);
+            }
 
-            const normalizedHistory = (history || []).map(h => ({
-                ...h,
-                timestamp: h.recorded_at || h.timestamp || h.created_at
+            // Format history array explicitly for frontend chart & logs table
+            const formattedHistory = (history || []).map(h => ({
+                id: h.id,
+                product_id: h.product_id,
+                price: parseFloat(h.price),
+                stock: h.stock || 'In Stock',
+                timestamp: h.recorded_at || h.timestamp || h.created_at || new Date().toISOString()
             }));
 
-            const normalizedLogs = (logs || []).map(l => ({
-                ...l,
+            // Format logs array
+            const formattedLogs = (logs || []).map(l => ({
+                id: l.id,
+                product_id: l.product_id,
                 outcome: l.outcome || (l.status ? l.status.toLowerCase() : 'success'),
-                timestamp: l.created_at || l.timestamp
+                timestamp: l.created_at || l.timestamp || new Date().toISOString()
             }));
 
             return {
-                ...prod,
-                latest_price: normalizedHistory.length > 0 ? normalizedHistory[0].price : (prod.current_price || null),
-                latest_stock: normalizedHistory.length > 0 ? (normalizedHistory[0].stock || 'In Stock') : 'In Stock',
-                last_checked: normalizedHistory.length > 0 ? normalizedHistory[0].timestamp : null,
-                price_history: normalizedHistory,
-                logs: normalizedLogs
+                id: prod.id,
+                store_product_id: prod.store_product_id,
+                name: prod.name,
+                selected_option: prod.selected_option,
+                current_price: prod.current_price,
+                latest_price: formattedHistory.length > 0 ? formattedHistory[0].price : prod.current_price,
+                latest_stock: formattedHistory.length > 0 ? formattedHistory[0].stock : 'In Stock',
+                last_checked: formattedHistory.length > 0 ? formattedHistory[0].timestamp : null,
+                price_history: formattedHistory, // Key guaranteed present in JSON payload
+                logs: formattedLogs
             };
         }));
 
         res.json(detailedProducts);
     } catch (err) {
-        console.error("Error fetching products:", err);
+        console.error("Fatal error fetching products:", err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Real-Time Dynamic Scraper Engine Endpoint
+// 3. Pure Dynamic Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -144,7 +151,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
             const currentTime = new Date().toISOString();
 
             try {
-                // Product title identify karke specific price fetch karna
+                // Strict isolation: Find specific item by name, then extract price in that card only
                 $('h1, h2, h3, h4, h5, p, span, div').each((i, el) => {
                     const text = $(el).children().remove().end().text().trim().toLowerCase();
                     
@@ -169,7 +176,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 });
 
-                // Fallback: Name ke baad regex extraction
+                // Fallback: Name pattern regex search
                 if (scrapedPrice === null) {
                     const bodyText = $('body').text();
                     const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -181,14 +188,14 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 }
 
                 if (scrapedPrice === null || isNaN(scrapedPrice)) {
-                    throw new Error(`Real-time price could not be located on store page for: ${prod.name}`);
+                    throw new Error(`Real-time price could not be located in HTML for: ${prod.name}`);
                 }
 
-                // Database schema ke integer number ya UUID ko identify karein
+                // Match with integer ID '1' or String prod.id
                 const targetNumericId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
                 const targetId = targetNumericId || String(prod.id);
 
-                // 1. Insert directly into price_history
+                // 1. Insert genuine scraped price directly into price_history
                 const { error: histInsertErr } = await supabase.from('price_history').insert([{
                     product_id: targetId,
                     price: scrapedPrice,
@@ -202,13 +209,13 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     throw histInsertErr;
                 }
 
-                // 2. Update current_price in products
+                // 2. Update current_price in products table
                 await supabase
                     .from('products')
                     .update({ current_price: scrapedPrice })
                     .eq('id', prod.id);
 
-                // 3. Insert into scrape_logs
+                // 3. Log success
                 await supabase.from('scrape_logs').insert([{
                     product_id: targetId,
                     outcome: 'success',
