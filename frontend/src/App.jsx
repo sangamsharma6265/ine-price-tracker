@@ -52,13 +52,23 @@ export default function App() {
     setLoading(false);
   };
 
+  const formatTimestamp = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch {
+      return dateStr;
+    }
+  };
+
   const exportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,Product Name,Store ID,Price,Stock,Timestamp\n";
     products.forEach(p => {
-      const records = p.price_history && p.price_history.length > 0 ? p.price_history : p.logs;
-      if (records && records.length > 0) {
-        records.forEach(l => {
-          csvContent += `"${p.name}","${p.store_product_id}",${l.price || p.latest_price || 0},"${l.stock || p.latest_stock || 'In Stock'}","${l.timestamp}"\n`;
+      const history = p.price_history || [];
+      if (history.length > 0) {
+        history.forEach(item => {
+          const time = item.recorded_at || item.timestamp || item.created_at || '';
+          csvContent += `"${p.name}","${p.store_product_id}",${item.price || 0},"${item.stock || p.latest_stock || 'In Stock'}","${time}"\n`;
         });
       } else {
         csvContent += `"${p.name}","${p.store_product_id}",${p.latest_price || 0},"${p.latest_stock || 'In Stock'}","${p.last_checked || new Date().toISOString()}"\n`;
@@ -89,7 +99,7 @@ export default function App() {
     card: { backgroundColor: '#030712', padding: '16px', borderRadius: '12px', border: '1px solid #1f2937', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
     trackBtn: { backgroundColor: 'rgba(5, 150, 105, 0.2)', color: '#34d399', border: '1px solid rgba(5, 150, 105, 0.4)', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', marginTop: '12px', width: '100%' },
     logBox: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1f2937' },
-    subBox: { backgroundColor: '#030712', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', maxHeight: '150px', overflowY: 'auto' }
+    subBox: { backgroundColor: '#030712', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', maxHeight: '160px', overflowY: 'auto' }
   };
 
   return (
@@ -144,84 +154,94 @@ export default function App() {
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {products.map(prod => (
-                <div key={prod.id} style={{ ...styles.card, padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{prod.name}</h3>
-                      <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                        Store ID: {prod.store_product_id} | Option: {prod.selected_option}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '22px', fontWeight: 'extrabold', color: '#34d399', margin: 0 }}>
-                        {prod.latest_price !== null ? `$${prod.latest_price}` : 'Pending'}
-                      </p>
-                      <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>{prod.latest_stock || 'Unknown'}</p>
-                    </div>
-                  </div>
+              {products.map(prod => {
+                const logs = prod.logs || [];
+                const priceHistory = prod.price_history || [];
+                const latestLog = logs.length > 0 ? logs[0] : null;
+                const latestStatus = latestLog ? (latestLog.status || latestLog.outcome || 'SUCCESS') : null;
+                const latestLogTime = latestLog ? (latestLog.created_at || latestLog.timestamp) : null;
 
-                  <div style={{ fontSize: '12px', backgroundColor: '#111827', padding: '10px 14px', borderRadius: '8px', marginTop: '14px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af', fontWeight: '600' }}>Recent Scrape Status:</span>
-                    {prod.logs && prod.logs.length > 0 ? (
-                      <span style={{ color: prod.logs[0].outcome === 'success' ? '#34d399' : '#f87171', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                        {prod.logs[0].outcome} at {new Date(prod.logs[0].timestamp).toLocaleString()}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#f59e0b', fontWeight: '600' }}>No scrapes performed yet. Click 'Run Scrape Now'.</span>
-                    )}
-                  </div>
-
-                  {/* Price History & Scrape Logs Section */}
-                  <div style={styles.logBox}>
-                    <div>
-                      <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
-                        Price History Log
-                      </h4>
-                      <div style={styles.subBox}>
-                        {(prod.price_history && prod.price_history.length > 0) ? (
-                          prod.price_history.map((hist, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                              <span>{new Date(hist.timestamp).toLocaleString()}</span>
-                              <span style={{ color: '#34d399', fontWeight: '600' }}>${hist.price}</span>
-                            </div>
-                          ))
-                        ) : (prod.logs && prod.logs.length > 0) ? (
-                          prod.logs.map((log, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                              <span>{new Date(log.timestamp).toLocaleString()}</span>
-                              <span style={{ color: '#34d399', fontWeight: '600' }}>${prod.latest_price || '199.99'}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No history recorded yet.</p>
-                        )}
+                return (
+                  <div key={prod.id} style={{ ...styles.card, padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '18px', color: '#fff' }}>{prod.name}</h3>
+                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                          Store ID: {prod.store_product_id} | Option: {prod.selected_option}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '22px', fontWeight: 'extrabold', color: '#34d399', margin: 0 }}>
+                          {prod.latest_price !== null && prod.latest_price !== undefined ? `$${prod.latest_price}` : 'Pending'}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>{prod.latest_stock || 'In Stock'}</p>
                       </div>
                     </div>
 
-                    <div>
-                      <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
-                        Recent Scrape Logs (Outcome & Timestamp)
-                      </h4>
-                      <div style={styles.subBox}>
-                        {prod.logs && prod.logs.length > 0 ? (
-                          prod.logs.map((log, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
-                              <span style={{ color: '#9ca3af' }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                              <span style={{ color: log.outcome === 'success' ? '#34d399' : '#f87171', fontWeight: '600', textTransform: 'uppercase' }}>
-                                {log.outcome}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No logs available.</p>
-                        )}
+                    <div style={{ fontSize: '12px', backgroundColor: '#111827', padding: '10px 14px', borderRadius: '8px', marginTop: '14px', border: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#9ca3af', fontWeight: '600' }}>Recent Scrape Status:</span>
+                      {latestStatus ? (
+                        <span style={{ color: latestStatus.toUpperCase() === 'SUCCESS' ? '#34d399' : '#f87171', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          {latestStatus} at {formatTimestamp(latestLogTime)}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#f59e0b', fontWeight: '600' }}>No scrapes performed yet. Click 'Run Scrape Now'.</span>
+                      )}
+                    </div>
+
+                    {/* Price History & Scrape Logs Section */}
+                    <div style={styles.logBox}>
+                      {/* Independent Historical Price Timeline */}
+                      <div>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
+                          Price History Log ({priceHistory.length} records)
+                        </h4>
+                        <div style={styles.subBox}>
+                          {priceHistory.length > 0 ? (
+                            priceHistory.map((hist, idx) => {
+                              const recTime = hist.recorded_at || hist.timestamp || hist.created_at;
+                              return (
+                                <div key={hist.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
+                                  <span>{formatTimestamp(recTime)}</span>
+                                  <span style={{ color: '#34d399', fontWeight: '600' }}>${hist.price}</span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No price history recorded yet.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Execution Logs */}
+                      <div>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#d1d5db', textTransform: 'uppercase', marginBottom: '8px' }}>
+                          Scrape Execution Logs
+                        </h4>
+                        <div style={styles.subBox}>
+                          {logs.length > 0 ? (
+                            logs.map((log, idx) => {
+                              const logTime = log.created_at || log.timestamp;
+                              const status = (log.status || log.outcome || 'SUCCESS').toUpperCase();
+                              return (
+                                <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '6px', marginBottom: '6px' }}>
+                                  <span style={{ color: '#9ca3af' }}>{formatTimestamp(logTime)}</span>
+                                  <span style={{ color: status === 'SUCCESS' ? '#34d399' : '#f87171', fontWeight: '600' }}>
+                                    {status}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>No logs available.</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
