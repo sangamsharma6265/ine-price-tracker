@@ -4,7 +4,6 @@ import axios from 'axios';
 // Backend Render URL
 const API_BASE = 'https://ine-price-tracker-backend.onrender.com';
 
-// Mock store product catalog for search and option picking
 const STORE_CATALOG = [
   {
     store_product_id: 'prod_1',
@@ -31,14 +30,17 @@ export default function App() {
   const [selectedOption, setSelectedOption] = useState('');
   const [message, setMessage] = useState('');
 
-  // 1. Fetch tracked products from Supabase via backend
+  // 1. Fetch tracked products
   const fetchTrackedProducts = async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE}/api/products`);
       setProducts(res.data || []);
+      setMessage('');
     } catch (err) {
       console.error('Error fetching products:', err);
+      // Fallback check
+      setMessage('Connecting to backend...');
     } finally {
       setLoading(false);
     }
@@ -48,33 +50,32 @@ export default function App() {
     fetchTrackedProducts();
   }, []);
 
-  // Filter catalog based on search
   const filteredCatalog = STORE_CATALOG.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 2. Add product to track
+  // 2. Add product
   const handleTrackProduct = async () => {
     if (!selectedProduct || !selectedOption) {
-      setMessage('Please select a product and an option to track.');
+      alert('Please select a product and an option to track.');
       return;
     }
 
     try {
-      setMessage('Adding product...');
-      const res = await axios.post(`${API_BASE}/api/products/track`, {
+      setMessage('Adding product to tracker...');
+      await axios.post(`${API_BASE}/api/products/track`, {
         store_product_id: selectedProduct.store_product_id,
         name: selectedProduct.name,
         selected_option: selectedOption
       });
 
-      setMessage('Product added successfully!');
+      setMessage('Product tracked successfully!');
       setSelectedProduct(null);
       setSelectedOption('');
       setSearchTerm('');
       fetchTrackedProducts();
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Failed to add product.');
+      setMessage(err.response?.data?.error || 'Failed to track product.');
     }
   };
 
@@ -83,14 +84,14 @@ export default function App() {
     try {
       setMessage('Scraping store in background...');
       await axios.get(`${API_BASE}/api/trigger-scrape`);
-      setMessage('Scrape completed!');
+      setMessage('Scrape cycle completed!');
       fetchTrackedProducts();
     } catch (err) {
-      setMessage('Scrape error: ' + err.message);
+      setMessage('Scrape error: ' + (err.response?.data?.error || err.message));
     }
   };
 
-  // 4. Export exact 7-column CSV (Honest failure handling)
+  // 4. Export strict 7-column CSV
   const handleExportCSV = () => {
     const headers = [
       'store_product_id',
@@ -140,181 +141,174 @@ export default function App() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `ine_price_history_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `ine_price_tracker_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif', maxWidth: '1100px', margin: '0 auto', color: '#1a1a1a' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e5e7eb', paddingBottom: '16px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700' }}>INE Price Tracker</h1>
-          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
-            Store target: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer">demo.inelabteamdev.com</a>
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={handleScrapeNow}
-            style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
-          >
-            Run Scrape Now
-          </button>
-          <button
-            onClick={handleExportCSV}
-            style={{ padding: '8px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
-          >
-            Export CSV
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-slate-800 gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">INE Price Tracker</h1>
+            <p className="text-sm text-slate-400 mt-1">
+              Automated mock store monitoring: <a href="https://demo.inelabteamdev.com/" target="_blank" rel="noreferrer" className="text-indigo-400 underline">demo.inelabteamdev.com</a>[cite: 8]
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleScrapeNow}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 font-medium text-sm rounded-lg transition-colors shadow-sm"
+            >
+              Run Scrape Now
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 font-medium text-sm rounded-lg transition-colors shadow-sm"
+            >
+              Export CSV
+            </button>
+          </div>
+        </header>
 
-      {message && (
-        <div style={{ marginTop: '16px', padding: '10px 14px', background: '#f3f4f6', borderRadius: '6px', fontSize: '14px', borderLeft: '4px solid #2563eb' }}>
-          {message}
-        </div>
-      )}
+        {message && (
+          <div className="p-3 bg-slate-900 border border-slate-700 rounded-lg text-sm text-indigo-300">
+            {message}
+          </div>
+        )}
 
-      {/* SEARCH AND ADD PRODUCT SECTION */}
-      <section style={{ marginTop: '24px', padding: '20px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-        <h2 style={{ fontSize: '18px', margin: '0 0 12px', fontWeight: '600' }}>🔍 Search & Track Product from Store</h2>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            placeholder="Search mock store (e.g. Headphones, Chair, Watch)..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setSelectedProduct(null);
-              setSelectedOption('');
-            }}
-            style={{ flex: 1, minWidth: '240px', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
-          />
+        {/* Search & Track Section */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+          <h2 className="text-base font-semibold text-slate-200 mb-3">🔍 Search & Track Product from Store</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input
+              type="text"
+              placeholder="Search store (e.g. Headphones, Chair, Watch)..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedProduct(null);
+                setSelectedOption('');
+              }}
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+            />
 
-          {searchTerm && (
             <select
               onChange={(e) => {
                 const prod = STORE_CATALOG.find(p => p.store_product_id === e.target.value);
                 setSelectedProduct(prod);
                 setSelectedOption(prod ? prod.options[0] : '');
               }}
-              defaultValue=""
-              style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+              value={selectedProduct ? selectedProduct.store_product_id : ''}
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
             >
               <option value="" disabled>Select Matched Product</option>
               {filteredCatalog.map(p => (
                 <option key={p.store_product_id} value={p.store_product_id}>{p.name}</option>
               ))}
             </select>
-          )}
 
-          {selectedProduct && (
             <select
               value={selectedOption}
               onChange={(e) => setSelectedOption(e.target.value)}
-              style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+              disabled={!selectedProduct}
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
             >
-              {selectedProduct.options.map(opt => (
+              <option value="" disabled>Select Variant Option</option>
+              {selectedProduct?.options.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-          )}
 
-          <button
-            onClick={handleTrackProduct}
-            disabled={!selectedProduct}
-            style={{
-              padding: '8px 18px',
-              background: selectedProduct ? '#111827' : '#9ca3af',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: selectedProduct ? 'pointer' : 'not-allowed',
-              fontWeight: '500'
-            }}
-          >
-            Track Product
-          </button>
-        </div>
-      </section>
-
-      {/* TRACKED PRODUCTS TABLE */}
-      <section style={{ marginTop: '28px' }}>
-        <h2 style={{ fontSize: '18px', margin: '0 0 14px', fontWeight: '600' }}>
-          Tracked Products & Live Price ({products.length})
-        </h2>
-
-        {loading ? (
-          <p>Loading tracked products...</p>
-        ) : products.length === 0 ? (
-          <p style={{ color: '#6b7280' }}>No products tracked yet. Use the search bar above to add products.</p>
-        ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-              <thead style={{ background: '#f3f4f6' }}>
-                <tr>
-                  <th style={{ padding: '12px' }}>Product</th>
-                  <th style={{ padding: '12px' }}>Selected Option</th>
-                  <th style={{ padding: '12px' }}>Latest Price</th>
-                  <th style={{ padding: '12px' }}>Stock</th>
-                  <th style={{ padding: '12px' }}>Last Scraped</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(p => (
-                  <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '12px', fontWeight: '500' }}>
-                      {p.name}
-                      <span style={{ display: 'block', fontSize: '12px', color: '#6b7280' }}>ID: {p.store_product_id}</span>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                        {p.selected_option || 'Standard'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: '600', color: '#059669' }}>
-                      ${p.latest_price || p.current_price || '--'}
-                    </td>
-                    <td style={{ padding: '12px' }}>{p.latest_stock || 'In Stock'}</td>
-                    <td style={{ padding: '12px', color: '#6b7280', fontSize: '12px' }}>
-                      {p.last_checked ? new Date(p.last_checked).toLocaleString() : 'Pending Scrape'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <button
+              onClick={handleTrackProduct}
+              disabled={!selectedProduct || !selectedOption}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 font-medium text-sm py-2 px-4 rounded-lg transition-colors"
+            >
+              Track Product
+            </button>
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* SCRAPE LOGS / AUDIT TRAIL */}
-      <section style={{ marginTop: '32px' }}>
-        <h2 style={{ fontSize: '18px', margin: '0 0 12px', fontWeight: '600' }}>Scrape Execution Logs (Audit Trail)</h2>
-        <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', background: '#fafafa', fontSize: '13px' }}>
-          {products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).length === 0 ? (
-            <p style={{ color: '#6b7280', margin: 0 }}>No audit logs recorded yet.</p>
+        {/* Tracked Products Table */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+          <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+            <h2 className="text-base font-semibold text-white">Tracked Products ({products.length})</h2>
+            <button onClick={fetchTrackedProducts} className="text-xs text-indigo-400 hover:underline">Refresh</button>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-slate-400 text-sm">Loading tracked data...</div>
+          ) : products.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-sm">No products tracked yet. Use the search tool above to begin.</div>
           ) : (
-            products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).map((log, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                <span><strong>{log.prodName}</strong></span>
-                <span style={{
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  background: log.outcome === 'failed' ? '#fee2e2' : log.outcome === 'retried' ? '#fef3c7' : '#d1fae5',
-                  color: log.outcome === 'failed' ? '#b91c1c' : log.outcome === 'retried' ? '#b45309' : '#047857'
-                }}>
-                  {log.outcome?.toUpperCase() || 'SUCCESS'}
-                </span>
-                <span style={{ color: '#6b7280', fontFamily: 'monospace' }}>{log.timestamp}</span>
-              </div>
-            ))
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">Product</th>
+                    <th className="py-3 px-4">Selected Option</th>
+                    <th className="py-3 px-4">Latest Price</th>
+                    <th className="py-3 px-4">Stock</th>
+                    <th className="py-3 px-4">Last Scraped</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {products.map(p => (
+                    <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-white">{p.name}</div>
+                        <div className="text-xs text-slate-500 font-mono">ID: {p.store_product_id}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 bg-indigo-950 text-indigo-300 border border-indigo-800/60 rounded text-xs">
+                          {p.selected_option || 'Default'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-emerald-400">
+                        ${p.latest_price || p.current_price || '--'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">{p.latest_stock || 'In Stock'}</td>
+                      <td className="py-3 px-4 text-xs text-slate-400">
+                        {p.last_checked ? new Date(p.last_checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+
+        {/* Scrape Execution Logs (Audit Trail) */}
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+          <h2 className="text-base font-semibold text-white mb-3">Scrape Execution Logs (Audit Trail)</h2>
+          <div className="max-h-52 overflow-y-auto space-y-2 pr-2">
+            {products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).length === 0 ? (
+              <p className="text-xs text-slate-500">No execution logs found.</p>
+            ) : (
+              products.flatMap(p => (p.logs || []).map(l => ({ ...l, prodName: p.name }))).map((log, idx) => (
+                <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-950/70 border border-slate-800 rounded-lg text-xs">
+                  <span className="font-medium text-slate-200">{log.prodName}</span>
+                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-semibold ${
+                    log.outcome === 'failed' ? 'bg-red-950 text-red-400 border border-red-800' :
+                    log.outcome === 'retried' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                    'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                  }`}>
+                    {log.outcome?.toUpperCase() || 'SUCCESS'}
+                  </span>
+                  <span className="text-slate-500 font-mono">{log.timestamp}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+      </div>
     </div>
   );
 }
