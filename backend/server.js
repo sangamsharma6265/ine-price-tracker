@@ -38,11 +38,7 @@ app.post('/api/products/track', async (req, res) => {
 
         const { data, error } = await supabase
             .from('products')
-            .insert([{ 
-                store_product_id, 
-                name, 
-                selected_option 
-            }])
+            .insert([{ store_product_id, name, selected_option }])
             .select();
 
         if (error) throw error;
@@ -60,11 +56,10 @@ app.get('/api/products', async (req, res) => {
         if (error) throw error;
 
         const detailedProducts = await Promise.all(products.map(async (prod) => {
-            // Safe array matching: covers both UUID and store_product_id
             const validIds = [String(prod.id)];
             if (prod.store_product_id) validIds.push(String(prod.store_product_id));
 
-            // Fetch price history
+            // Fetch price history (Matching product's UUID or store_product_id)
             const { data: history, error: histErr } = await supabase
                 .from('price_history')
                 .select('*')
@@ -72,11 +67,9 @@ app.get('/api/products', async (req, res) => {
                 .order('recorded_at', { ascending: false })
                 .limit(30);
 
-            if (histErr) {
-                console.error(`History query error for ${prod.name}:`, histErr.message);
-            }
+            if (histErr) console.error("History fetch error:", histErr);
 
-            // Fetch execution logs
+            // Fetch scrape logs
             const { data: logs, error: logErr } = await supabase
                 .from('scrape_logs')
                 .select('*')
@@ -84,9 +77,7 @@ app.get('/api/products', async (req, res) => {
                 .order('created_at', { ascending: false })
                 .limit(10);
 
-            if (logErr) {
-                console.error(`Logs query error for ${prod.name}:`, logErr.message);
-            }
+            if (logErr) console.error("Logs fetch error:", logErr);
 
             const normalizedHistory = (history || []).map(h => ({
                 ...h,
@@ -116,7 +107,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// Real-Time Scraper Engine Endpoint
+// Real-Time Dynamic Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -126,7 +117,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
             return res.json({ message: "No products to scrape", results: [] });
         }
 
-        // Live mock store HTML fetch
+        // Live fetch from mock store website
         const response = await axios.get(MOCK_STORE_URL, {
             headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' 
@@ -143,16 +134,25 @@ app.get('/api/trigger-scrape', async (req, res) => {
             const currentTime = new Date().toISOString();
 
             try {
-                // Precise target: find title container, then extract only adjacent price
-                $('h1, h2, h3, h4, h5, .title, .product-title, .name').each((i, titleEl) => {
-                    const titleText = $(titleEl).text().trim().toLowerCase();
-                    if (scrapedPrice === null && prod.name && titleText.includes(prod.name.toLowerCase())) {
-                        // Scan immediate sibling or narrow parent container
-                        const parentBox = $(titleEl).closest('.product, .product-item, .card, .product-card, div');
-                        const priceText = parentBox.find('.price, .amount, [data-price]').first().text() 
-                                          || parentBox.text();
+                // Strict isolation: Find specific item by name, then extract price in that card only
+                $('h1, h2, h3, h4, h5, p, span, div').each((i, el) => {
+                    const text = $(el).children().remove().end().text().trim().toLowerCase();
+                    
+                    if (scrapedPrice === null && prod.name && text === prod.name.toLowerCase()) {
+                        // Traverse up to find the closest single product card container
+                        const card = $(el).closest('.product, .product-item, .card, .product-card, div[class*="product"], div[class*="item"]');
+                        
+                        // Look for price elements specifically inside this container
+                        const priceElement = card.find('.price, .amount, [class*="price"]').first();
+                        let priceText = priceElement.length ? priceElement.text() : '';
 
-                        const match = priceText.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
+                        if (!priceText) {
+                            // Find any text with dollar currency format inside card
+                            const matchDollar = card.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
+                            if (matchDollar) priceText = matchDollar[0];
+                        }
+
+                        const match = priceText.match(/([0-9]+(?:\.[0-9]{1,2})?)/);
                         if (match) {
                             const val = parseFloat(match[1]);
                             if (!isNaN(val) && val > 0) {
@@ -162,22 +162,23 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 });
 
-                // Fallback: search by product name in whole page
+                // If not found in card, search exact text pattern: "Product Name ... $XX.XX"
                 if (scrapedPrice === null) {
                     const bodyText = $('body').text();
                     const escaped = prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const reg = new RegExp(`${escaped}[^$]*?\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
-                    const match = bodyText.match(reg);
+                    const regex = new RegExp(`${escaped}[^$]{0,100}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
+                    const match = bodyText.match(regex);
                     if (match) {
                         scrapedPrice = parseFloat(match[1]);
                     }
                 }
 
+                // If still not found, throw error (Do NOT fake or hardcode any price)
                 if (scrapedPrice === null || isNaN(scrapedPrice)) {
-                    throw new Error(`Price could not be scraped from store page for ${prod.name}`);
+                    throw new Error(`Real-time price could not be located in HTML for: ${prod.name}`);
                 }
 
-                // 1. Insert into price_history using product.id
+                // 1. Insert genuine scraped price directly into price_history
                 const { error: histInsertErr } = await supabase.from('price_history').insert([{
                     product_id: String(prod.id),
                     price: scrapedPrice,
@@ -209,7 +210,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 results.push({ product: prod.name, status: 'success', price: scrapedPrice, timestamp: currentTime });
 
             } catch (itemErr) {
-                console.error(`Scrape failed for product ${prod.name}:`, itemErr.message);
+                console.error(`Scrape failed for ${prod.name}:`, itemErr.message);
 
                 await supabase.from('scrape_logs').insert([{
                     product_id: String(prod.id),
@@ -225,7 +226,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
 
         res.json({ message: "Scrape cycle completed", results });
     } catch (err) {
-        console.error("Trigger scrape error:", err);
+        console.error("Scrape cycle failed:", err);
         res.status(500).json({ error: err.message });
     }
 });
