@@ -117,7 +117,6 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 $('.product-item, .card, [data-product-id], div').each((i, el) => {
                     const cardText = $(el).text();
                     if (cardText.includes(prod.name) || cardText.includes(prod.store_product_id)) {
-                        // Look for price elements within this specific product card
                         const priceEl = $(el).find('.price, span, div').filter((_, e) => $(e).text().includes('$')).first();
                         if (priceEl.length) {
                             const parsed = parseFloat(priceEl.text().replace(/[^0-9.]/g, ''));
@@ -128,7 +127,6 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 });
 
-                // General fallback if specific card match fails
                 if (price === null) {
                     const bodyText = $.text();
                     const match = bodyText.match(/\$([0-9]+\.[0-9]{2})/);
@@ -139,17 +137,21 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     }
                 }
 
-                // Insert into price history with the exact scraped price from store
-                await supabase.from('price_history').insert([{
+                // Explicitly insert a brand new row with current timestamp and unique price
+                const { error: insertError } = await supabase.from('price_history').insert([{
                     product_id: prod.id,
                     price: price,
-                    stock: stock
+                    stock: stock,
+                    timestamp: new Date().toISOString() // Force current exact timestamp
                 }]);
+
+                if (insertError) throw insertError;
 
                 // Insert success log
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
-                    outcome: 'success'
+                    outcome: 'success',
+                    timestamp: new Date().toISOString()
                 }]);
 
                 results.push({ product: prod.name, status: 'success', price });
@@ -160,7 +162,8 @@ app.get('/api/trigger-scrape', async (req, res) => {
                 await supabase.from('scrape_logs').insert([{
                     product_id: prod.id,
                     outcome: 'failed',
-                    error_message: errorMessage
+                    error_message: errorMessage,
+                    timestamp: new Date().toISOString()
                 }]);
 
                 results.push({ product: prod.name, status: 'failed', error: errorMessage });
