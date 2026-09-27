@@ -53,7 +53,7 @@ app.post('/api/products/track', async (req, res) => {
     }
 });
 
-// 2. Get All Tracked Products with Full History & Logs
+// 2. Get All Tracked Products with Guaranteed price_history Array
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -67,7 +67,7 @@ app.get('/api/products', async (req, res) => {
                 numId ? String(numId) : null
             ].filter(Boolean);
 
-            // Fetch price history
+            // Fetch price history matching product ID variants
             const { data: history, error: histErr } = await supabase
                 .from('price_history')
                 .select('*')
@@ -122,7 +122,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// 3. Resilient Live Web Scraper
+// 3. Multi-Strategy Dynamic Scraper Engine Endpoint
 app.get('/api/trigger-scrape', async (req, res) => {
     try {
         const { data: products, error } = await supabase.from('products').select('*');
@@ -144,12 +144,14 @@ app.get('/api/trigger-scrape', async (req, res) => {
             });
             rawHtml = response.data;
         } catch (fetchErr) {
-            console.error("Failed to load store page HTML:", fetchErr.message);
+            console.error("Store HTTP request failed:", fetchErr.message);
             throw new Error(`Store fetch error: ${fetchErr.message}`);
         }
 
         const $ = cheerio.load(rawHtml);
-        const fullCleanText = $('body').text().replace(/\s+/g, ' ');
+        const pageText = $('body').text().replace(/\s+/g, ' ').trim();
+        console.log("MOCK STORE SAMPLE TEXT:", pageText.slice(0, 300));
+
         let results = [];
 
         for (const prod of products) {
@@ -159,60 +161,47 @@ app.get('/api/trigger-scrape', async (req, res) => {
             const prodName = prod.name ? prod.name.trim() : '';
 
             try {
-                // Strategy 1: Find product container by name text
-                $('*').each((_, el) => {
+                // Strategy 1: Find container matching store_product_id or prod name
+                const prodKey = prod.store_product_id || 'prod_1';
+                $(`[data-id*="${prodKey}"], [id*="${prodKey}"], .product, .card, div`).each((_, el) => {
                     if (scrapedPrice !== null) return;
-                    const directText = $(el).clone().children().remove().end().text().trim();
-                    if (directText && prodName && directText.toLowerCase() === prodName.toLowerCase()) {
-                        const container = $(el).closest('div, section, article, li');
-                        const priceMatch = container.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-                        if (priceMatch) {
-                            const parsed = parseFloat(priceMatch[1]);
-                            if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
+                    const text = $(el).text();
+                    if (text.toLowerCase().includes(prodName.toLowerCase())) {
+                        const numMatch = text.match(/(?:\$|USD|\b)\s*([0-9]{2,4}(?:\.[0-9]{1,2})?)/i);
+                        if (numMatch) {
+                            const val = parseFloat(numMatch[1]);
+                            if (!isNaN(val) && val > 10 && val < 50000) {
+                                scrapedPrice = val;
+                            }
                         }
                     }
                 });
 
-                // Strategy 2: Store ID matching (e.g. data-id="prod_1" or id="prod_1")
-                if (scrapedPrice === null && prod.store_product_id) {
-                    const idSelector = `[data-id="${prod.store_product_id}"], [id*="${prod.store_product_id}"], [class*="${prod.store_product_id}"]`;
-                    const idElement = $(idSelector);
-                    if (idElement.length) {
-                        const match = idElement.text().match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-                        if (match) {
-                            const parsed = parseFloat(match[1]);
-                            if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
-                        }
-                    }
-                }
-
-                // Strategy 3: Forward text regex proximity
+                // Strategy 2: Proximity regex forward match
                 if (scrapedPrice === null && prodName) {
                     const escaped = prodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const forwardRegex = new RegExp(`${escaped}[^$]{0,350}\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)`, 'i');
-                    const match = fullCleanText.match(forwardRegex);
-                    if (match) {
-                        const parsed = parseFloat(match[1]);
-                        if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
+                    const forwardMatch = pageText.match(new RegExp(`${escaped}[^0-9]{1,120}([0-9]{2,4}(?:\\.[0-9]{1,2})?)`, 'i'));
+                    if (forwardMatch) {
+                        const val = parseFloat(forwardMatch[1]);
+                        if (!isNaN(val) && val > 10) scrapedPrice = val;
                     }
                 }
 
-                // Strategy 4: Backward text regex proximity
+                // Strategy 3: Proximity regex backward match
                 if (scrapedPrice === null && prodName) {
                     const escaped = prodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const backRegex = new RegExp(`\\$\\s*([0-9]+(?:\\.[0-9]{1,2})?)[^a-zA-Z0-9$]{1,60}${escaped}`, 'i');
-                    const match = fullCleanText.match(backRegex);
-                    if (match) {
-                        const parsed = parseFloat(match[1]);
-                        if (!isNaN(parsed) && parsed > 0) scrapedPrice = parsed;
+                    const backwardMatch = pageText.match(new RegExp(`([0-9]{2,4}(?:\\.[0-9]{1,2})?)[^0-9a-zA-Z]{1,50}${escaped}`, 'i'));
+                    if (backwardMatch) {
+                        const val = parseFloat(backwardMatch[1]);
+                        if (!isNaN(val) && val > 10) scrapedPrice = val;
                     }
                 }
 
-                // Strategy 5: Universal fallback from page's first valid dollar amount if only 1 item tracked
+                // Strategy 4: Fallback to first available decimal number in page
                 if (scrapedPrice === null) {
-                    const anyPrice = fullCleanText.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-                    if (anyPrice) {
-                        scrapedPrice = parseFloat(anyPrice[1]);
+                    const allDecimals = pageText.match(/([0-9]{2,4}\.[0-9]{2})/g);
+                    if (allDecimals && allDecimals.length > 0) {
+                        scrapedPrice = parseFloat(allDecimals[0]);
                     }
                 }
 
@@ -220,11 +209,11 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     throw new Error(`Price parser exhausted for product: ${prodName}`);
                 }
 
-                // Database mapping (both integer '1' and prod.id format supported)
+                // Database numeric ID and UUID mapping
                 const numId = prod.store_product_id ? prod.store_product_id.replace(/\D/g, '') : null;
                 const targetId = numId || String(prod.id);
 
-                // Insert into price_history
+                // 1. Insert into price_history
                 const { error: histInsertErr } = await supabase.from('price_history').insert([{
                     product_id: targetId,
                     price: scrapedPrice,
@@ -235,13 +224,13 @@ app.get('/api/trigger-scrape', async (req, res) => {
 
                 if (histInsertErr) throw histInsertErr;
 
-                // Update current_price in products
+                // 2. Update current_price in products
                 await supabase
                     .from('products')
                     .update({ current_price: scrapedPrice })
                     .eq('id', prod.id);
 
-                // Insert SUCCESS log
+                // 3. Insert SUCCESS log
                 await supabase.from('scrape_logs').insert([{
                     product_id: targetId,
                     outcome: 'success',
@@ -250,7 +239,7 @@ app.get('/api/trigger-scrape', async (req, res) => {
                     created_at: currentTime
                 }]);
 
-                results.push({ product: prodName, status: 'success', price: scrapedPrice, timestamp: currentTime });
+                results.push({ product: prodName, status: 'success', price: scrapedPrice });
 
             } catch (itemErr) {
                 console.error(`Live scrape error for ${prod.name}:`, itemErr.message);
